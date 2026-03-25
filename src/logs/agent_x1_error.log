@@ -1,0 +1,82 @@
+[2026-03-25 13:41:28.237] [57663] [8459837184] [ERROR] [anthropic_engine.py:333] | [AnthropicEngine] API Error: 401 - {"error":{"type":"authentication_error","message":"The API Key appears to be invalid or may have expired. Please verify your credentials and try again."},"type":"error"}
+[2026-03-25 13:41:28.238] [57663] [8459837184] [ERROR] [anthropic_engine.py:153] | [AnthropicEngine] API Error: {"error":{"type":"authentication_error","message":"The API Key appears to be invalid or may have expired. Please verify your credentials and try again."},"type":"error"}
+[2026-03-25 13:46:27.007] [61633] [8459837184] [ERROR] [anthropic_engine.py:341] | [AnthropicEngine] Request failed: HTTPSConnectionPool(host='api.kimi.com', port=443): Max retries exceeded with url: /coding/v1/messages (Caused by SSLError(SSLError(1, '[SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:1129)')))
+[2026-03-25 13:46:27.013] [61633] [8459837184] [ERROR] [anthropic_engine.py:153] | [AnthropicEngine] API Error: HTTPSConnectionPool(host='api.kimi.com', port=443): Max retries exceeded with url: /coding/v1/messages (Caused by SSLError(SSLError(1, '[SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:1129)')))
+[2026-03-25 13:55:19.512] [57663] [8459837184] [ERROR] [main.py:254] | Error: [Errno 2] No such file or directory: '/Users/eric/source/agent/agent_x1-main/results/session/session_134119_2026-03-25_13-41-19/session_llm.md'
+Traceback (most recent call last):
+  File "/Users/eric/source/agent/agent_x1-main/main.py", line 174, in run_interactive_mode
+  File "/Users/eric/source/agent/agent_x1-main/src/core/session_manager.py", line 384, in end_current_session
+  File "/Users/eric/source/agent/agent_x1-main/src/core/session_manager.py", line 296, in end_session
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/eric/source/agent/agent_x1-main/results/session/session_134119_2026-03-25_13-41-19/session_llm.md'
+[2026-03-25 13:55:20.472] [57663] [8459837184] [ERROR] [anthropic_engine.py:333] | [AnthropicEngine] API Error: 401 - {"error":{"type":"authentication_error","message":"The API Key appears to be invalid or may have expired. Please verify your credentials and try again."},"type":"error"}
+[2026-03-25 13:55:20.475] [57663] [8459837184] [ERROR] [main.py:254] | Error: [Errno 2] No such file or directory: '/Users/eric/source/agent/agent_x1-main/results/session/session_134119_2026-03-25_13-41-19/session_llm.md'
+Traceback (most recent call last):
+  File "/Users/eric/source/agent/agent_x1-main/main.py", line 245, in run_interactive_mode
+  File "/Users/eric/source/agent/agent_x1-main/src/engine/anthropic_engine.py", line 143, in chat
+  File "/Users/eric/source/agent/agent_x1-main/src/core/session_manager.py", line 243, in log_llm_interaction
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/eric/source/agent/agent_x1-main/results/session/session_134119_2026-03-25_13-41-19/session_llm.md'
+[2026-03-25 13:55:22.098] [57663] [8459837184] [ERROR] [main.py:254] | Error: [Errno 2] No such file or directory: '/Users/eric/source/agent/agent_x1-main/results/session/session_134119_2026-03-25_13-41-19/session_llm.md'
+Traceback (most recent call last):
+  File "/Users/eric/source/agent/agent_x1-main/main.py", line 174, in run_interactive_mode
+  File "/Users/eric/source/agent/agent_x1-main/src/core/session_manager.py", line 384, in end_current_session
+  File "/Users/eric/source/agent/agent_x1-main/src/core/session_manager.py", line 296, in end_session
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/eric/source/agent/agent_x1-main/results/session/session_134119_2026-03-25_13-41-19/session_llm.md'
+[2026-03-25 13:55:24.451] [57663] [8459837184] [ERROR] [main.py:254] | Error: [Errno 2] No such file or directory: '/Users/eric/source/agent/agent_x1-main/results/session/session_134119_2026-03-25_13-41-19/session_llm.md'
+Traceback (most recent call last):
+  File "/Users/eric/source/agent/agent_x1-main/main.py", line 174, in run_interactive_mode
+  File "/Users/eric/source/agent/agent_x1-main/src/core/session_manager.py", line 384, in end_current_session
+  File "/Users/eric/source/agent/agent_x1-main/src/core/session_manager.py", line 296, in end_session
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/eric/source/agent/agent_x1-main/results/session/session_134119_2026-03-25_13-41-19/session_llm.md'
+[2026-03-25 13:55:25.370] [57663] [8459837184] [ERROR] [anthropic_engine.py:333] | [AnthropicEngine] API Error: 401 - {"error":{"type":"authentication_error","message":"The API Key appears to be invalid or may have expired. Please verify your credentials and try again."},"type":"error"}
+[2026-03-25 13:55:25.371] [57663] [8459837184] [ERROR] [main.py:254] | Error: [Errno 2] No such file or directory: '/Users/eric/source/agent/agent_x1-main/results/session/session_134119_2026-03-25_13-41-19/session_llm.md'
+Traceback (most recent call last):
+  File "/Users/eric/source/agent/agent_x1-main/main.py", line 245, in run_interactive_mode
+  File "/Users/eric/source/agent/agent_x1-main/src/engine/anthropic_engine.py", line 143, in chat
+  File "/Users/eric/source/agent/agent_x1-main/src/core/session_manager.py", line 243, in log_llm_interaction
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/eric/source/agent/agent_x1-main/results/session/session_134119_2026-03-25_13-41-19/session_llm.md'
+[2026-03-25 13:55:25.771] [57663] [8459837184] [ERROR] [main.py:434] | Config file not found: [Errno 2] No such file or directory: '/Users/eric/source/agent/agent_x1-main/results/session/session_134119_2026-03-25_13-41-19/session_llm.md'
+[2026-03-25 14:36:23.340] [95986] [8459837184] [ERROR] [anthropic_engine.py:333] | [AnthropicEngine] API Error: 401 - {"error":{"type":"authentication_error","message":"The API Key appears to be invalid or may have expired. Please verify your credentials and try again."},"type":"error"}
+[2026-03-25 14:36:23.342] [95986] [8459837184] [ERROR] [anthropic_engine.py:153] | [AnthropicEngine] API Error: {"error":{"type":"authentication_error","message":"The API Key appears to be invalid or may have expired. Please verify your credentials and try again."},"type":"error"}
+[2026-03-25 14:36:48.143] [95986] [8459837184] [ERROR] [anthropic_engine.py:333] | [AnthropicEngine] API Error: 401 - {"error":{"type":"authentication_error","message":"The API Key appears to be invalid or may have expired. Please verify your credentials and try again."},"type":"error"}
+[2026-03-25 14:36:48.147] [95986] [8459837184] [ERROR] [anthropic_engine.py:153] | [AnthropicEngine] API Error: {"error":{"type":"authentication_error","message":"The API Key appears to be invalid or may have expired. Please verify your credentials and try again."},"type":"error"}
+[2026-03-25 14:37:01.072] [95986] [8459837184] [ERROR] [anthropic_engine.py:333] | [AnthropicEngine] API Error: 401 - {"error":{"type":"authentication_error","message":"The API Key appears to be invalid or may have expired. Please verify your credentials and try again."},"type":"error"}
+[2026-03-25 14:37:01.074] [95986] [8459837184] [ERROR] [anthropic_engine.py:153] | [AnthropicEngine] API Error: {"error":{"type":"authentication_error","message":"The API Key appears to be invalid or may have expired. Please verify your credentials and try again."},"type":"error"}
+[2026-03-25 14:42:46.971] [10361] [8459837184] [ERROR] [anthropic_engine.py:333] | [AnthropicEngine] API Error: 401 - {"error":{"type":"authentication_error","message":"The API Key appears to be invalid or may have expired. Please verify your credentials and try again."},"type":"error"}
+[2026-03-25 14:42:46.974] [10361] [8459837184] [ERROR] [anthropic_engine.py:153] | [AnthropicEngine] API Error: {"error":{"type":"authentication_error","message":"The API Key appears to be invalid or may have expired. Please verify your credentials and try again."},"type":"error"}
+[2026-03-25 14:50:32.290] [17257] [8459837184] [ERROR] [main.py:254] | Error: [Errno 2] No such file or directory: '/Users/eric/source/agent/agent_x1/results/session/session_144317_2026-03-25_14-43-17/session_llm.md'
+Traceback (most recent call last):
+  File "/Users/eric/source/agent/agent_x1/main.py", line 174, in run_interactive_mode
+    end_current_session("User exited normally")
+  File "/Users/eric/source/agent/agent_x1/src/core/session_manager.py", line 384, in end_current_session
+    _global_session_manager.end_session(main_content)
+  File "/Users/eric/source/agent/agent_x1/src/core/session_manager.py", line 296, in end_session
+    with open(self.session_llm_file, 'a', encoding='utf-8') as f:
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/eric/source/agent/agent_x1/results/session/session_144317_2026-03-25_14-43-17/session_llm.md'
+[2026-03-25 14:50:33.886] [17257] [8459837184] [ERROR] [main.py:254] | Error: [Errno 2] No such file or directory: '/Users/eric/source/agent/agent_x1/results/session/session_144317_2026-03-25_14-43-17/session_llm.md'
+Traceback (most recent call last):
+  File "/Users/eric/source/agent/agent_x1/main.py", line 174, in run_interactive_mode
+    end_current_session("User exited normally")
+  File "/Users/eric/source/agent/agent_x1/src/core/session_manager.py", line 384, in end_current_session
+    _global_session_manager.end_session(main_content)
+  File "/Users/eric/source/agent/agent_x1/src/core/session_manager.py", line 296, in end_session
+    with open(self.session_llm_file, 'a', encoding='utf-8') as f:
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/eric/source/agent/agent_x1/results/session/session_144317_2026-03-25_14-43-17/session_llm.md'
+[2026-03-25 14:50:35.625] [17257] [8459837184] [ERROR] [main.py:254] | Error: [Errno 2] No such file or directory: '/Users/eric/source/agent/agent_x1/results/session/session_144317_2026-03-25_14-43-17/session_llm.md'
+Traceback (most recent call last):
+  File "/Users/eric/source/agent/agent_x1/main.py", line 174, in run_interactive_mode
+    end_current_session("User exited normally")
+  File "/Users/eric/source/agent/agent_x1/src/core/session_manager.py", line 384, in end_current_session
+    _global_session_manager.end_session(main_content)
+  File "/Users/eric/source/agent/agent_x1/src/core/session_manager.py", line 296, in end_session
+    with open(self.session_llm_file, 'a', encoding='utf-8') as f:
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/eric/source/agent/agent_x1/results/session/session_144317_2026-03-25_14-43-17/session_llm.md'
+[2026-03-25 14:50:39.982] [17257] [8459837184] [ERROR] [main.py:254] | Error: [Errno 2] No such file or directory: '/Users/eric/source/agent/agent_x1/results/session/session_144317_2026-03-25_14-43-17/session_llm.md'
+Traceback (most recent call last):
+  File "/Users/eric/source/agent/agent_x1/main.py", line 174, in run_interactive_mode
+    end_current_session("User exited normally")
+  File "/Users/eric/source/agent/agent_x1/src/core/session_manager.py", line 384, in end_current_session
+    _global_session_manager.end_session(main_content)
+  File "/Users/eric/source/agent/agent_x1/src/core/session_manager.py", line 296, in end_session
+    with open(self.session_llm_file, 'a', encoding='utf-8') as f:
+FileNotFoundError: [Errno 2] No such file or directory: '/Users/eric/source/agent/agent_x1/results/session/session_144317_2026-03-25_14-43-17/session_llm.md'
+[2026-03-25 14:50:44.848] [17257] [8459837184] [ERROR] [main.py:434] | Config file not found: [Errno 2] No such file or directory: '/Users/eric/source/agent/agent_x1/results/session/session_144317_2026-03-25_14-43-17/session_llm.md'

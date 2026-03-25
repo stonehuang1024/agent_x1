@@ -1,0 +1,53 @@
+# Agent X1 Configuration
+# Main configuration file for the agent system
+
+# LLM Provider Configuration
+# Set which provider to use: kimi, anthropic, openai
+provider: "anthropic"
+
+# Provider-specific configurations
+providers:
+  kimi:
+    api_key: ""  # Set via KIMI_API_KEY env var or provide here
+    base_url: "https://api.moonshot.cn/v1"
+    model: "moonshot-v1-32k"
+    temperature: 0.7
+    max_tokens: 16384
+    
+  anthropic:
+    api_key: ""  # Set via ANTHROPIC_API_KEY env var or provide here
+    base_url: "https://api.kimi.com/coding/"
+    model: "kimi-k2.5"
+    temperature: 0.7
+    max_tokens: 16384
+    
+  openai:
+    api_key: ""  # Set via OPENAI_API_KEY env var or provide here
+    base_url: "https://api.openai.com/v1"
+    model: "gpt-4"
+    temperature: 0.7
+    max_tokens: 16384
+
+# Global engine settings (can be overridden by provider-specific settings above)
+timeout: 3600
+max_iterations: 200
+
+# System prompt
+system_prompt: |
+  You are a helpful AI assistant with access to tools.
+  Use the available tools when needed to provide accurate information.
+  Always respond in the same language as the user's query.
+  
+  Session file organization:
+  - All files produced in each session should be saved to: results/session/{session_name}_{yyyy-mm-dd_H-M-S}/
+  - This includes PDFs, data files, reports, and any other generated content
+
+# Path Configuration
+paths:
+  log_dir: "logs"
+  result_dir: "results"
+  data_dir: "data"
+  temp_dir: "tmp"
+
+# Logging
+log_level: "INFO"

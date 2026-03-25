@@ -1,0 +1,53 @@
+# Agent X1 - Python Dependencies
+
+# HTTP client for API requests
+requests>=2.31.0
+
+# Configuration file parsing
+pyyaml>=6.0.1
+
+# Type hints support
+typing-extensions>=4.8.0
+
+# Data validation
+jsonschema>=4.19.0
+
+# Logging
+loguru>=0.7.0
+
+# Stock data and analysis
+yfinance>=0.2.36
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Excel support
+openpyxl>=3.1.0
+
+# Plotting
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Web search (Exa AI)
+exa-py>=2.9.0
+
+# Web scraping
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+
+# RSS feed parsing
+feedparser>=6.0.10
+
+# PDF processing (PyMuPDF)
+pymupdf>=1.24.0
+
+# PowerPoint creation/editing
+python-pptx>=0.6.23
+
+# System monitoring (optional, for bash_tools)
+psutil>=5.9.0
+
+# Terminal input handling with proper Unicode support
+prompt_toolkit>=3.0.0
+
+# Reader package for HTML/PDF/DOC to Markdown conversion
+reader @ git+https://github.com/vakra-dev/reader.git
