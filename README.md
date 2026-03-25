@@ -1,6 +1,6 @@
 # Agent X1 🚀 - From Zero to Hero in 12 Hours
 
-> **Author:** ericdhuang（黄树东）| **Created:** 2026-03-07 | **Mission:** Master Agent Fundamentals from Scratch
+> **Author:** stonedhuang 202603 | **Created:** 2026-03-07 | **Mission:** Master Agent Fundamentals from Scratch
 
 ## 🎯 What is This?
 
