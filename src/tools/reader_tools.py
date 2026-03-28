@@ -461,7 +461,10 @@ CONVERT_URL_TO_MARKDOWN_TOOL = Tool(
         },
         "required": ["url"]
     },
-    func=convert_url_to_markdown
+    func=convert_url_to_markdown,
+    timeout_seconds=60,
+    max_output_chars=60000,
+    is_readonly=True,
 )
 
 CONVERT_PDF_TO_MARKDOWN_TOOL = Tool(
@@ -482,7 +485,10 @@ CONVERT_PDF_TO_MARKDOWN_TOOL = Tool(
         },
         "required": ["file_path"]
     },
-    func=convert_pdf_to_markdown
+    func=convert_pdf_to_markdown,
+    timeout_seconds=120,
+    max_output_chars=60000,
+    is_readonly=True,
 )
 
 CONVERT_HTML_TO_MARKDOWN_TOOL = Tool(
@@ -503,7 +509,10 @@ CONVERT_HTML_TO_MARKDOWN_TOOL = Tool(
         },
         "required": ["html"]
     },
-    func=convert_html_to_markdown
+    func=convert_html_to_markdown,
+    timeout_seconds=30,
+    max_output_chars=60000,
+    is_readonly=True,
 )
 
 CONVERT_FILE_TO_MARKDOWN_TOOL = Tool(
@@ -519,7 +528,10 @@ CONVERT_FILE_TO_MARKDOWN_TOOL = Tool(
         },
         "required": ["file_path"]
     },
-    func=convert_file_to_markdown
+    func=convert_file_to_markdown,
+    timeout_seconds=60,
+    max_output_chars=60000,
+    is_readonly=True,
 )
 
 # List of all reader tools

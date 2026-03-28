@@ -211,6 +211,171 @@ class TestFileTools(unittest.TestCase):
         self.assertEqual(read_result["content"], "exec interface test")
 
 
+class TestEditFileTools(unittest.TestCase):
+    """Integration tests for edit_file tool in file_tools.py."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        # Reset the edit guard before each test to ensure isolation
+        from src.core.edit_manager import reset_edit_guard
+        reset_edit_guard()
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmp, ignore_errors=True)
+        from src.core.edit_manager import reset_edit_guard
+        reset_edit_guard()
+
+    def test_edit_file_basic(self):
+        """Full read → edit flow: read file, then apply a single SEARCH/REPLACE."""
+        from src.tools.file_tools import write_file, read_file, edit_file
+        path = os.path.join(self.tmp, "basic.py")
+        write_file(path, "def foo():\n    return 1\n")
+
+        # Must read first
+        read_file(path)
+
+        diff = (
+            "------- SEARCH\n"
+            "    return 1\n"
+            "=======\n"
+            "    return 42\n"
+            "+++++++ REPLACE"
+        )
+        result = edit_file(path, diff)
+        self.assertTrue(result["success"])
+        self.assertEqual(result["applied_edits"], 1)
+
+        # Verify file content
+        with open(path, "r") as f:
+            content = f.read()
+        self.assertIn("return 42", content)
+        self.assertNotIn("return 1", content)
+
+    def test_edit_file_without_read_error(self):
+        """Editing without prior read_file should be denied."""
+        from src.tools.file_tools import write_file, edit_file
+        path = os.path.join(self.tmp, "no_read.py")
+        write_file(path, "original content")
+
+        diff = (
+            "------- SEARCH\n"
+            "original content\n"
+            "=======\n"
+            "new content\n"
+            "+++++++ REPLACE"
+        )
+        result = edit_file(path, diff)
+        self.assertIn("error", result)
+        self.assertEqual(result["error_type"], "edit_denied")
+
+        # File should be unchanged
+        with open(path, "r") as f:
+            self.assertEqual(f.read(), "original content")
+
+    def test_edit_file_multi_block(self):
+        """Multiple SEARCH/REPLACE blocks in a single call."""
+        from src.tools.file_tools import write_file, read_file, edit_file
+        path = os.path.join(self.tmp, "multi.py")
+        write_file(path, "alpha\nbeta\ngamma\ndelta\n")
+        read_file(path)
+
+        diff = (
+            "------- SEARCH\n"
+            "alpha\n"
+            "=======\n"
+            "ALPHA\n"
+            "+++++++ REPLACE\n"
+            "------- SEARCH\n"
+            "gamma\n"
+            "=======\n"
+            "GAMMA\n"
+            "+++++++ REPLACE"
+        )
+        result = edit_file(path, diff)
+        self.assertTrue(result["success"])
+        self.assertEqual(result["applied_edits"], 2)
+
+        with open(path, "r") as f:
+            content = f.read()
+        self.assertEqual(content, "ALPHA\nbeta\nGAMMA\ndelta\n")
+
+    def test_edit_file_no_match_error(self):
+        """SEARCH block that doesn't match file content → error with suggestions."""
+        from src.tools.file_tools import write_file, read_file, edit_file
+        path = os.path.join(self.tmp, "nomatch.py")
+        write_file(path, "def hello():\n    pass\n")
+        read_file(path)
+
+        diff = (
+            "------- SEARCH\n"
+            "def nonexistent():\n"
+            "    pass\n"
+            "=======\n"
+            "def replaced():\n"
+            "    pass\n"
+            "+++++++ REPLACE"
+        )
+        result = edit_file(path, diff)
+        self.assertIn("error", result)
+        self.assertEqual(result["error_type"], "apply_failed")
+        self.assertIn("failed_edits", result)
+
+        # File should be unchanged
+        with open(path, "r") as f:
+            self.assertEqual(f.read(), "def hello():\n    pass\n")
+
+    def test_edit_file_atomic_write(self):
+        """After successful edit, file should contain the new content atomically."""
+        from src.tools.file_tools import write_file, read_file, edit_file
+        path = os.path.join(self.tmp, "atomic.txt")
+        original = "line1\nline2\nline3\n"
+        write_file(path, original)
+        read_file(path)
+
+        diff = (
+            "------- SEARCH\n"
+            "line2\n"
+            "=======\n"
+            "LINE_TWO\n"
+            "+++++++ REPLACE"
+        )
+        result = edit_file(path, diff)
+        self.assertTrue(result["success"])
+
+        with open(path, "r") as f:
+            content = f.read()
+        self.assertEqual(content, "line1\nLINE_TWO\nline3\n")
+
+        # No temp files should remain
+        tmp_files = [f for f in os.listdir(self.tmp) if f.endswith(".tmp")]
+        self.assertEqual(len(tmp_files), 0)
+
+    def test_edit_file_tool_execute_interface(self):
+        """Test edit_file via EDIT_FILE_TOOL.execute() JSON interface."""
+        from src.tools.file_tools import write_file, read_file
+        from src.tools import EDIT_FILE_TOOL
+        path = os.path.join(self.tmp, "execute_test.txt")
+        write_file(path, "hello world")
+        read_file(path)
+
+        diff = (
+            "------- SEARCH\n"
+            "hello world\n"
+            "=======\n"
+            "hello universe\n"
+            "+++++++ REPLACE"
+        )
+        result = json.loads(EDIT_FILE_TOOL.execute(json.dumps({
+            "file_path": path,
+            "diff": diff,
+        })))
+        self.assertTrue(result["success"])
+
+        with open(path, "r") as f:
+            self.assertEqual(f.read(), "hello universe")
+
+
 class TestBashTools(unittest.TestCase):
     """Tests for bash_tools.py."""
 

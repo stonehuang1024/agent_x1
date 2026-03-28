@@ -11,6 +11,7 @@ Supports both legacy Kimi models and the latest K2 series.
 
 import json
 import logging
+import time
 import requests
 from typing import Dict, List, Any, Optional
 
@@ -130,23 +131,38 @@ class KimiEngine(BaseEngine):
         logger.warning("[KimiEngine] Max iterations reached")
         return "Maximum number of tool call iterations reached."
     
-    def _call_llm(self) -> Dict[str, Any]:
+    def call_llm(
+        self,
+        messages: List[Message],
+        tools: Optional[Dict[str, Tool]] = None,
+        system_prompt: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
-        Make an API call to the Kimi LLM service.
+        Make a single LLM call with messages and optional tools.
         
+        This is the new interface for AgentLoop.
+        
+        Args:
+            messages: List of conversation messages
+            tools: Optional dict of tools to make available
+            system_prompt: Optional override for system prompt
+            
         Returns:
-            Raw API response dictionary
+            Response dict with 'content', 'tool_calls', 'usage', etc.
         """
         headers = {
             "Authorization": f"Bearer {self.config.api_key}",
             "Content-Type": "application/json"
         }
         
-        system_msg = Message(role=Role.SYSTEM.value, content=self.get_effective_system_prompt())
-        all_messages = [system_msg] + self.messages
+        # Use provided system prompt or default
+        sys_prompt = system_prompt or self.get_effective_system_prompt()
+        system_msg = Message(role=Role.SYSTEM.value, content=sys_prompt)
+        all_messages = [system_msg] + messages
         
-        effective_tools = self.get_effective_tools()
-        tools = [tool.get_schema() for tool in effective_tools.values()]
+        # Use provided tools or default
+        effective_tools = tools or self.get_effective_tools()
+        tools_schemas = [tool.get_schema() for tool in effective_tools.values()]
         
         payload: Dict[str, Any] = {
             "model": self.config.model,
@@ -155,11 +171,11 @@ class KimiEngine(BaseEngine):
             "max_tokens": self.config.max_tokens
         }
         
-        if tools:
-            payload["tools"] = tools
+        if tools_schemas:
+            payload["tools"] = tools_schemas
             payload["tool_choice"] = "auto"
         
-        logger.info(f"[KimiEngine] API Request: {len(all_messages)} messages, {len(tools)} tools")
+        logger.info(f"[KimiEngine.call_llm] {len(all_messages)} messages, {len(tools_schemas)} tools")
         
         try:
             response = requests.post(
@@ -171,22 +187,40 @@ class KimiEngine(BaseEngine):
             response.raise_for_status()
             
             resp_json = response.json()
-            usage = resp_json.get("usage", {})
-            logger.info(f"[KimiEngine] Tokens - Prompt: {usage.get('prompt_tokens', 'N/A')}, "
-                       f"Completion: {usage.get('completion_tokens', 'N/A')}, "
-                       f"Total: {usage.get('total_tokens', 'N/A')}")
             
-            return resp_json
+            # Parse the response into standardized format
+            choice = resp_json.get("choices", [{}])[0]
+            message = choice.get("message", {})
+            usage = resp_json.get("usage", {})
+            
+            return {
+                "content": message.get("content"),
+                "tool_calls": message.get("tool_calls"),
+                "usage": {
+                    "input_tokens": usage.get("prompt_tokens", 0),
+                    "output_tokens": usage.get("completion_tokens", 0),
+                    "total_tokens": usage.get("total_tokens", 0)
+                },
+                "model": self.config.model,
+                "finish_reason": choice.get("finish_reason", "unknown")
+            }
             
         except requests.RequestException as e:
-            logger.error(f"[KimiEngine] API request failed: {e}")
+            logger.error(f"[KimiEngine.call_llm] API request failed: {e}")
             return {
-                "error": True,
-                "message": str(e),
-                "choices": [{
-                    "message": {"role": "assistant", "content": f"API Error: {str(e)}"}
-                }]
+                "content": f"API Error: {str(e)}",
+                "tool_calls": None,
+                "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+                "model": self.config.model,
+                "finish_reason": "error"
             }
+    
+    def _call_llm(self) -> Dict[str, Any]:
+        """Internal: Make API call using internal message history."""
+        # Filter out system messages to avoid duplication,
+        # since call_llm() will prepend its own system message.
+        filtered = [m for m in self.messages if m.role != Role.SYSTEM.value]
+        return self.call_llm(filtered, self.tools)
     
     def _parse_response(self, response: Dict[str, Any]) -> Message:
         """
@@ -233,6 +267,9 @@ class KimiEngine(BaseEngine):
         
         logger.info(f"[KimiEngine] Executing {len(tool_calls)} tool call(s)")
         
+        # Engine-layer output truncation limit (safety net)
+        ENGINE_MAX_OUTPUT = 30000
+
         for i, call in enumerate(tool_calls, 1):
             call_id = call.get("id", "unknown")
             function = call.get("function", {})
@@ -241,6 +278,7 @@ class KimiEngine(BaseEngine):
             
             logger.info(f"[KimiEngine] Tool {i}/{len(tool_calls)}: {tool_name}({arguments})")
             
+            start_time = time.time()
             if tool_name in self.tools:
                 tool = self.tools[tool_name]
                 try:
@@ -253,7 +291,18 @@ class KimiEngine(BaseEngine):
             else:
                 output = json.dumps({"error": f"Tool '{tool_name}' not found"}, ensure_ascii=False)
                 logger.error(f"[KimiEngine] Unknown tool: {tool_name}")
-            
+
+            elapsed = time.time() - start_time
+            logger.info(f"[KimiEngine] Tool {i} '{tool_name}' completed in {elapsed:.1f}s")
+
+            # Engine-layer output truncation safety net
+            if len(output) > ENGINE_MAX_OUTPUT:
+                logger.warning(
+                    f"[KimiEngine] Tool '{tool_name}' output truncated by engine: "
+                    f"{len(output)} -> {ENGINE_MAX_OUTPUT} chars"
+                )
+                output = output[:ENGINE_MAX_OUTPUT] + "\n... [ENGINE TRUNCATED]"
+
             tool_result = Message(
                 role=Role.TOOL.value,
                 content=output,

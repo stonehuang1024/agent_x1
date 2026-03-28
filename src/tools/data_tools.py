@@ -431,7 +431,10 @@ READ_CSV_TOOL = Tool(
         },
         "required": ["path"]
     },
-    func=read_csv
+    func=read_csv,
+    timeout_seconds=60,
+    max_output_chars=50000,
+    is_readonly=True,
 )
 
 READ_JSON_FILE_TOOL = Tool(
@@ -445,7 +448,10 @@ READ_JSON_FILE_TOOL = Tool(
         },
         "required": ["path"]
     },
-    func=read_json_file
+    func=read_json_file,
+    timeout_seconds=30,
+    max_output_chars=50000,
+    is_readonly=True,
 )
 
 READ_EXCEL_TOOL = Tool(
@@ -463,7 +469,10 @@ READ_EXCEL_TOOL = Tool(
         },
         "required": ["path"]
     },
-    func=read_excel
+    func=read_excel,
+    timeout_seconds=60,
+    max_output_chars=50000,
+    is_readonly=True,
 )
 
 ANALYZE_DATAFRAME_TOOL = Tool(
@@ -482,7 +491,10 @@ ANALYZE_DATAFRAME_TOOL = Tool(
         },
         "required": ["path"]
     },
-    func=analyze_dataframe
+    func=analyze_dataframe,
+    timeout_seconds=120,
+    max_output_chars=30000,
+    is_readonly=True,
 )
 
 FILTER_CSV_TOOL = Tool(
@@ -514,7 +526,10 @@ FILTER_CSV_TOOL = Tool(
         },
         "required": ["path", "filters"]
     },
-    func=filter_csv
+    func=filter_csv,
+    timeout_seconds=60,
+    max_output_chars=50000,
+    is_readonly=True,
 )
 
 SAVE_AS_CSV_TOOL = Tool(
@@ -532,7 +547,9 @@ SAVE_AS_CSV_TOOL = Tool(
         },
         "required": ["data", "output_path"]
     },
-    func=save_as_csv
+    func=save_as_csv,
+    timeout_seconds=30,
+    max_output_chars=5000,
 )
 
 CONVERT_DATA_FORMAT_TOOL = Tool(
@@ -551,7 +568,9 @@ CONVERT_DATA_FORMAT_TOOL = Tool(
         },
         "required": ["input_path", "output_path"]
     },
-    func=convert_data_format
+    func=convert_data_format,
+    timeout_seconds=60,
+    max_output_chars=5000,
 )
 
 DATA_TOOLS = [

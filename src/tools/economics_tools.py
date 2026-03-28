@@ -389,7 +389,10 @@ GET_FRED_SERIES_TOOL = Tool(
         },
         "required": ["series_id"]
     },
-    func=get_fred_series
+    func=get_fred_series,
+    timeout_seconds=60,
+    max_output_chars=30000,
+    is_readonly=True,
 )
 
 GET_WORLD_BANK_INDICATOR_TOOL = Tool(
@@ -410,7 +413,10 @@ GET_WORLD_BANK_INDICATOR_TOOL = Tool(
         },
         "required": ["indicator"]
     },
-    func=get_world_bank_indicator
+    func=get_world_bank_indicator,
+    timeout_seconds=60,
+    max_output_chars=30000,
+    is_readonly=True,
 )
 
 GET_EXCHANGE_RATES_TOOL = Tool(
@@ -431,7 +437,10 @@ GET_EXCHANGE_RATES_TOOL = Tool(
         },
         "required": []
     },
-    func=get_exchange_rates
+    func=get_exchange_rates,
+    timeout_seconds=30,
+    max_output_chars=10000,
+    is_readonly=True,
 )
 
 GET_ECONOMIC_CALENDAR_TOOL = Tool(
@@ -448,7 +457,10 @@ GET_ECONOMIC_CALENDAR_TOOL = Tool(
         },
         "required": []
     },
-    func=get_economic_calendar
+    func=get_economic_calendar,
+    timeout_seconds=30,
+    max_output_chars=30000,
+    is_readonly=True,
 )
 
 GENERATE_ECONOMIC_REPORT_TOOL = Tool(
@@ -471,7 +483,10 @@ GENERATE_ECONOMIC_REPORT_TOOL = Tool(
         },
         "required": ["topics"]
     },
-    func=generate_economic_report
+    func=generate_economic_report,
+    timeout_seconds=120,
+    max_output_chars=50000,
+    is_readonly=True,
 )
 
 ECONOMICS_TOOLS = [

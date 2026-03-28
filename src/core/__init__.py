@@ -27,9 +27,18 @@ from .config import (
     AppConfig,
     LLMConfig,
     PathConfig,
+    ToolSafetyConfig,
     ProviderType,
     load_config,
     create_default_config_file
+)
+from .edit_manager import (
+    DiffParser,
+    SearchEngine,
+    EditApplier,
+    FileEditingGuard,
+    get_edit_guard,
+    reset_edit_guard,
 )
 from ..util.logger import (
     get_logger,
@@ -54,9 +63,17 @@ __all__ = [
     "AppConfig",
     "LLMConfig",
     "PathConfig",
+    "ToolSafetyConfig",
     "ProviderType",
     "load_config",
     "create_default_config_file",
+    # EditManager
+    "DiffParser",
+    "SearchEngine",
+    "EditApplier",
+    "FileEditingGuard",
+    "get_edit_guard",
+    "reset_edit_guard",
     # Logger
     "get_logger",
     "setup_logging",

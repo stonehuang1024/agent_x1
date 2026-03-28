@@ -69,6 +69,11 @@ TOOL_CATEGORIES: Dict[str, Dict[str, Any]] = {
         "description": "Calculator, time, weather (mock), knowledge base search",
         "tools": []
     },
+    "codebase": {
+        "label": "Codebase Search",
+        "description": "Search code with regex (grep), find files by pattern (glob), list directories (ls)",
+        "tools": []
+    },
 }
 
 

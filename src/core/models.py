@@ -64,13 +64,37 @@ class Message:
     tool_calls: Optional[List[Dict[str, Any]]] = None
     tool_call_id: Optional[str] = None
     name: Optional[str] = None
+    token_count: int = 0
+    importance: float = 0.5
+    cache_control: Optional[Dict[str, str]] = None
+
+    @classmethod
+    def system(cls, content: str) -> "Message":
+        """Create a system message."""
+        return cls(role=Role.SYSTEM.value, content=content)
+
+    @classmethod
+    def user(cls, content: str) -> "Message":
+        """Create a user message."""
+        return cls(role=Role.USER.value, content=content)
+
+    @classmethod
+    def assistant(cls, content: Optional[str] = None, tool_calls: Optional[List[Dict[str, Any]]] = None) -> "Message":
+        """Create an assistant message."""
+        return cls(role=Role.ASSISTANT.value, content=content, tool_calls=tool_calls)
+
+    @classmethod
+    def tool(cls, content: str, tool_call_id: str, name: str) -> "Message":
+        """Create a tool result message."""
+        return cls(role=Role.TOOL.value, content=content, tool_call_id=tool_call_id, name=name)
 
     def to_dict(self) -> Dict[str, Any]:
         """
         Convert to API-compatible dictionary.
         
         Returns:
-            Dictionary with None values removed
+            Dictionary with None values removed.
+            token_count and importance are included only if non-default.
         """
         result: Dict[str, Any] = {"role": self.role}
         
@@ -82,6 +106,12 @@ class Message:
             result["tool_call_id"] = self.tool_call_id
         if self.name is not None:
             result["name"] = self.name
+        if self.token_count != 0:
+            result["token_count"] = self.token_count
+        if self.importance != 0.5:
+            result["importance"] = self.importance
+        if self.cache_control is not None:
+            result["cache_control"] = self.cache_control
             
         return result
 
@@ -101,5 +131,8 @@ class Message:
             content=data.get("content"),
             tool_calls=data.get("tool_calls"),
             tool_call_id=data.get("tool_call_id"),
-            name=data.get("name")
+            name=data.get("name"),
+            token_count=data.get("token_count", 0),
+            importance=data.get("importance", 0.5),
+            cache_control=data.get("cache_control")
         )

@@ -186,15 +186,35 @@ class BaseEngine(ABC):
         return [msg.to_dict() for msg in self.messages]
     
     @abstractmethod
+    def call_llm(
+        self,
+        messages: List["Message"],
+        tools: Optional[Dict[str, "Tool"]] = None,
+        system_prompt: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Make a single LLM call with messages and optional tools.
+        
+        This is the new interface for AgentLoop - it performs a single
+        LLM invocation without any internal loop logic.
+        
+        Args:
+            messages: List of conversation messages
+            tools: Optional dict of tools to make available
+            system_prompt: Optional override for system prompt
+            
+        Returns:
+            Response dict with 'content', 'tool_calls', 'usage', etc.
+        """
+        pass
+    
+    @abstractmethod
     def chat(self, user_input: str) -> str:
         """
         Process a user message and return the final assistant response.
         
-        This method orchestrates the conversation flow:
-        1. Add user input to history
-        2. Call LLM with tools
-        3. Handle tool calls if present
-        4. Return final response
+        DEPRECATED: This method will be replaced by AgentLoop.
+        Currently maintained for backward compatibility.
         
         Args:
             user_input: The user's message
@@ -207,7 +227,7 @@ class BaseEngine(ABC):
     @abstractmethod
     def _call_llm(self) -> Dict[str, Any]:
         """
-        Make an API call to the LLM service.
+        Internal: Make an API call to the LLM service.
         
         Returns:
             Raw API response dictionary
@@ -217,7 +237,7 @@ class BaseEngine(ABC):
     @abstractmethod
     def _parse_response(self, response: Dict[str, Any]) -> "Message":
         """
-        Parse the LLM API response into a Message object.
+        Internal: Parse the LLM API response into a Message object.
         
         Args:
             response: The raw JSON response from the API
@@ -230,7 +250,7 @@ class BaseEngine(ABC):
     @abstractmethod
     def _execute_tools(self, tool_calls: List[Dict[str, Any]]) -> List["Message"]:
         """
-        Execute a list of tool calls and return result messages.
+        Internal: Execute a list of tool calls and return result messages.
         
         Args:
             tool_calls: List of tool call dictionaries from LLM

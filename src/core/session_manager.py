@@ -215,7 +215,7 @@ class SessionManager:
 **Messages ({len(messages)}):**
 
 ```json
-{json.dumps(messages, indent=2, ensure_ascii=False)[:3000]}
+{json.dumps(messages, indent=2, ensure_ascii=False)}
 ```
 
 **Tools ({len(tools)}):** {', '.join(t.get('name', 'unknown') for t in tools[:10])}
@@ -233,7 +233,7 @@ class SessionManager:
 **Content:**
 
 ```json
-{json.dumps(response, indent=2, ensure_ascii=False)[:5000]}
+{json.dumps(response, indent=2, ensure_ascii=False)}
 ```
 
 ---

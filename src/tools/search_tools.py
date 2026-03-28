@@ -175,7 +175,10 @@ GOOGLE_SEARCH_TOOL = Tool(
         },
         "required": ["query"]
     },
-    func=search_google
+    func=search_google,
+    timeout_seconds=30,
+    max_output_chars=30000,
+    is_readonly=True,
 )
 
 EXA_SEARCH_TOOL = Tool(
@@ -192,5 +195,8 @@ EXA_SEARCH_TOOL = Tool(
         },
         "required": ["query"]
     },
-    func=web_search_exa
+    func=web_search_exa,
+    timeout_seconds=30,
+    max_output_chars=30000,
+    is_readonly=True,
 )

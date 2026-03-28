@@ -96,6 +96,24 @@ class PathConfig:
 
 
 @dataclass
+class ToolSafetyConfig:
+    """
+    Tool execution safety configuration.
+
+    Global defaults for timeout and output limits.  Individual tools
+    can override these with their own per-tool values.
+
+    Attributes:
+        default_timeout: Default tool execution timeout in seconds
+        default_max_output: Default max output chars (~12K tokens at 50K)
+        subprocess_timeout: Subprocess timeout for CLI tools (grep, fd, etc.)
+    """
+    default_timeout: int = 120          # 2 minutes
+    default_max_output: int = 50000     # ~50K chars ≈ 12K tokens
+    subprocess_timeout: int = 55        # slightly below tool-level timeout
+
+
+@dataclass
 class AppConfig:
     """
     Main application configuration.
@@ -105,10 +123,12 @@ class AppConfig:
     Attributes:
         llm: LLM provider configuration
         paths: Path configuration for outputs
+        tool_safety: Tool execution safety configuration
         log_level: Logging level (DEBUG, INFO, WARNING, ERROR)
     """
     llm: LLMConfig = field(default_factory=LLMConfig)
     paths: PathConfig = field(default_factory=PathConfig)
+    tool_safety: ToolSafetyConfig = field(default_factory=ToolSafetyConfig)
     log_level: str = "INFO"
     
     def validate(self) -> None:
@@ -209,10 +229,12 @@ class AppConfig:
                 llm_data["system_prompt"] = legacy_llm["system_prompt"]
         
         paths_data = data.get("paths", {})
+        tool_safety_data = data.get("tool_safety", {})
         
         return cls(
             llm=LLMConfig(**llm_data),
             paths=PathConfig(**paths_data),
+            tool_safety=ToolSafetyConfig(**tool_safety_data),
             log_level=data.get("log_level", "INFO")
         )
 
@@ -422,6 +444,12 @@ def load_config(
             if "log_level" in file_config:
                 config.log_level = file_config["log_level"]
         
+        # Apply tool_safety config
+        if "tool_safety" in file_config:
+            for key, value in file_config["tool_safety"].items():
+                if hasattr(config.tool_safety, key):
+                    setattr(config.tool_safety, key, value)
+        
         # Legacy config structure (backward compatibility)
         if "llm" in file_config:
             for key, value in file_config["llm"].items():
@@ -445,6 +473,14 @@ def load_config(
                     setattr(config.paths, key, value)
         if "log_level" in env_config:
             config.log_level = env_config["log_level"]
+    
+    # Apply tool_safety env vars (highest priority)
+    if os.getenv("TOOL_DEFAULT_TIMEOUT"):
+        config.tool_safety.default_timeout = int(os.getenv("TOOL_DEFAULT_TIMEOUT"))
+    if os.getenv("TOOL_DEFAULT_MAX_OUTPUT"):
+        config.tool_safety.default_max_output = int(os.getenv("TOOL_DEFAULT_MAX_OUTPUT"))
+    if os.getenv("TOOL_SUBPROCESS_TIMEOUT"):
+        config.tool_safety.subprocess_timeout = int(os.getenv("TOOL_SUBPROCESS_TIMEOUT"))
     
     # Validate
     config.validate()
@@ -487,6 +523,14 @@ providers:
 # Global engine settings (can be overridden by provider-specific settings above)
 timeout: 600
 max_iterations: 10
+
+# Tool Safety Configuration
+# Global defaults for tool execution safety limits.
+# Individual tools can override these with their own values.
+tool_safety:
+  default_timeout: 120          # Default tool execution timeout in seconds
+  default_max_output: 50000     # Default max output chars (~12K tokens)
+  subprocess_timeout: 55        # Subprocess timeout for CLI tools (grep, fd, etc.)
 
 # System prompt
 system_prompt: |

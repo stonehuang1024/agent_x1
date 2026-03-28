@@ -264,6 +264,120 @@ class AnthropicEngine(BaseEngine):
         
         return anthropic_tools
     
+    def call_llm(
+        self,
+        messages: List[Message],
+        tools: Optional[Dict[str, Tool]] = None,
+        system_prompt: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Make a single LLM call with messages and optional tools.
+        
+        This is the new interface for AgentLoop.
+        
+        Args:
+            messages: List of conversation messages
+            tools: Optional dict of tools to make available
+            system_prompt: Optional override for system prompt
+            
+        Returns:
+            Response dict with 'content', 'tool_calls', 'usage', etc.
+        """
+        # Convert messages to Anthropic format
+        anthropic_msgs = self._convert_to_anthropic_format(messages)
+        
+        # Use provided tools or default
+        effective_tools = tools or self.tools
+        anthropic_tools = self._convert_tools_to_anthropic(effective_tools)
+        
+        # Use provided system prompt or default
+        sys_prompt = system_prompt or self.get_effective_system_prompt()
+        
+        # Make API call
+        base_url = self.config.base_url.rstrip('/')
+        url = f"{base_url}/v1/messages"
+        
+        headers = {
+            "x-api-key": self.config.api_key,
+            "Content-Type": "application/json",
+            "anthropic-version": "2023-06-01"
+        }
+        
+        payload: Dict[str, Any] = {
+            "model": self.config.model,
+            "max_tokens": self.config.max_tokens,
+            "temperature": self.config.temperature,
+            "system": sys_prompt,
+            "messages": anthropic_msgs
+        }
+        
+        if anthropic_tools:
+            payload["tools"] = anthropic_tools
+        
+        logger.info(f"[AnthropicEngine.call_llm] {len(anthropic_msgs)} messages, {len(anthropic_tools)} tools")
+        
+        try:
+            response = requests.post(
+                url,
+                headers=headers,
+                json=payload,
+                timeout=self.config.timeout
+            )
+            
+            if response.status_code == 200:
+                resp_json = response.json()
+                
+                # Parse content blocks
+                content_blocks = resp_json.get("content", [])
+                text_content = ""
+                tool_calls = []
+                
+                for block in content_blocks:
+                    if block.get("type") == "text":
+                        text_content += block.get("text", "")
+                    elif block.get("type") == "tool_use":
+                        tool_calls.append({
+                            "id": block.get("id", ""),
+                            "type": "function",
+                            "function": {
+                                "name": block.get("name", ""),
+                                "arguments": json.dumps(block.get("input", {}))
+                            }
+                        })
+                
+                usage = resp_json.get("usage", {})
+                
+                return {
+                    "content": text_content,
+                    "tool_calls": tool_calls if tool_calls else None,
+                    "usage": {
+                        "input_tokens": usage.get("input_tokens", 0),
+                        "output_tokens": usage.get("output_tokens", 0),
+                        "total_tokens": usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
+                    },
+                    "model": self.config.model,
+                    "finish_reason": resp_json.get("stop_reason", "unknown")
+                }
+            else:
+                logger.error(f"[AnthropicEngine.call_llm] API Error: {response.status_code}")
+                return {
+                    "content": f"API Error: {response.status_code}",
+                    "tool_calls": None,
+                    "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+                    "model": self.config.model,
+                    "finish_reason": "error"
+                }
+                
+        except requests.RequestException as e:
+            logger.error(f"[AnthropicEngine.call_llm] Request failed: {e}")
+            return {
+                "content": f"API Error: {str(e)}",
+                "tool_calls": None,
+                "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
+                "model": self.config.model,
+                "finish_reason": "error"
+            }
+    
     def _call_llm(self) -> Dict[str, Any]:
         """
         Implement abstract method from BaseEngine.
@@ -395,6 +509,9 @@ class AnthropicEngine(BaseEngine):
         
         logger.info(f"[AnthropicEngine] Executing {len(tool_calls)} tool call(s)")
         
+        # Engine-layer output truncation limit (safety net)
+        ENGINE_MAX_OUTPUT = 50000
+
         for i, call in enumerate(tool_calls, 1):
             call_id = call.get("id", "unknown")
             function = call.get("function", {})
@@ -403,6 +520,7 @@ class AnthropicEngine(BaseEngine):
             
             logger.info(f"[AnthropicEngine] Tool {i}/{len(tool_calls)}: {tool_name}({arguments})")
             
+            start_time = time.time()
             if tool_name in self.tools:
                 tool = self.tools[tool_name]
                 try:
@@ -414,7 +532,18 @@ class AnthropicEngine(BaseEngine):
             else:
                 output = json.dumps({"error": f"Tool '{tool_name}' not found"})
                 logger.error(f"[AnthropicEngine] Unknown tool: {tool_name}")
-            
+
+            elapsed = time.time() - start_time
+            logger.info(f"[AnthropicEngine] Tool {i} '{tool_name}' completed in {elapsed:.1f}s")
+
+            # Engine-layer output truncation safety net
+            if len(output) > ENGINE_MAX_OUTPUT:
+                logger.warning(
+                    f"[AnthropicEngine] Tool '{tool_name}' output truncated by engine: "
+                    f"{len(output)} -> {ENGINE_MAX_OUTPUT} chars"
+                )
+                output = output[:ENGINE_MAX_OUTPUT] + "\n... [ENGINE TRUNCATED]"
+
             tool_result = Message(
                 role=Role.TOOL.value,
                 content=output,

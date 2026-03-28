@@ -709,7 +709,10 @@ SEARCH_ARXIV_TOOL = Tool(
         },
         "required": ["query"]
     },
-    func=search_arxiv_papers
+    func=search_arxiv_papers,
+    timeout_seconds=60,
+    max_output_chars=30000,
+    is_readonly=True,
 )
 
 GET_ARXIV_PAPER_DETAILS_TOOL = Tool(
@@ -725,7 +728,10 @@ GET_ARXIV_PAPER_DETAILS_TOOL = Tool(
         },
         "required": ["arxiv_id"]
     },
-    func=get_arxiv_paper_details
+    func=get_arxiv_paper_details,
+    timeout_seconds=30,
+    max_output_chars=10000,
+    is_readonly=True,
 )
 
 DOWNLOAD_ARXIV_PDF_TOOL = Tool(
@@ -751,7 +757,9 @@ DOWNLOAD_ARXIV_PDF_TOOL = Tool(
         },
         "required": ["arxiv_id"]
     },
-    func=download_arxiv_pdf
+    func=download_arxiv_pdf,
+    timeout_seconds=180,
+    max_output_chars=5000,
 )
 
 
@@ -865,7 +873,9 @@ BATCH_DOWNLOAD_ARXIV_PDFS_TOOL = Tool(
         },
         "required": ["arxiv_ids"]
     },
-    func=batch_download_arxiv_pdfs
+    func=batch_download_arxiv_pdfs,
+    timeout_seconds=600,
+    max_output_chars=10000,
 )
 
 # Tool list for registration

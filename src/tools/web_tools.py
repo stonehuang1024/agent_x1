@@ -362,7 +362,10 @@ FETCH_URL_TOOL = Tool(
         },
         "required": ["url"]
     },
-    func=fetch_url
+    func=fetch_url,
+    timeout_seconds=30,
+    max_output_chars=60000,
+    is_readonly=True,
 )
 
 EXTRACT_WEBPAGE_TEXT_TOOL = Tool(
@@ -380,7 +383,10 @@ EXTRACT_WEBPAGE_TEXT_TOOL = Tool(
         },
         "required": ["url"]
     },
-    func=extract_webpage_text
+    func=extract_webpage_text,
+    timeout_seconds=30,
+    max_output_chars=60000,
+    is_readonly=True,
 )
 
 EXTRACT_LINKS_TOOL = Tool(
@@ -395,7 +401,10 @@ EXTRACT_LINKS_TOOL = Tool(
         },
         "required": ["url"]
     },
-    func=extract_links
+    func=extract_links,
+    timeout_seconds=30,
+    max_output_chars=30000,
+    is_readonly=True,
 )
 
 DOWNLOAD_FILE_TOOL = Tool(
@@ -410,7 +419,9 @@ DOWNLOAD_FILE_TOOL = Tool(
         },
         "required": ["url", "output_path"]
     },
-    func=download_file
+    func=download_file,
+    timeout_seconds=120,
+    max_output_chars=5000,
 )
 
 CHECK_URL_TOOL = Tool(
@@ -424,7 +435,10 @@ CHECK_URL_TOOL = Tool(
         },
         "required": ["url"]
     },
-    func=check_url
+    func=check_url,
+    timeout_seconds=15,
+    max_output_chars=5000,
+    is_readonly=True,
 )
 
 FETCH_RSS_FEED_TOOL = Tool(
@@ -441,7 +455,10 @@ FETCH_RSS_FEED_TOOL = Tool(
         },
         "required": ["url"]
     },
-    func=fetch_rss_feed
+    func=fetch_rss_feed,
+    timeout_seconds=30,
+    max_output_chars=30000,
+    is_readonly=True,
 )
 
 WEB_TOOLS = [

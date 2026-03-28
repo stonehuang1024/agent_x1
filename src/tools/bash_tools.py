@@ -101,7 +101,7 @@ def run_python_script(
     script_path: str,
     args: Optional[List[str]] = None,
     working_dir: Optional[str] = None,
-    timeout: int = 60
+    timeout: int = 1800
 ) -> Dict[str, Any]:
     """
     Execute a Python script file.
@@ -302,7 +302,9 @@ RUN_COMMAND_TOOL = Tool(
         },
         "required": ["command"]
     },
-    func=run_command
+    func=run_command,
+    timeout_seconds=120,
+    max_output_chars=30000,
 )
 
 RUN_PYTHON_SCRIPT_TOOL = Tool(
@@ -322,7 +324,9 @@ RUN_PYTHON_SCRIPT_TOOL = Tool(
         },
         "required": ["script_path"]
     },
-    func=run_python_script
+    func=run_python_script,
+    timeout_seconds=120,
+    max_output_chars=30000,
 )
 
 RUN_BASH_SCRIPT_TOOL = Tool(
@@ -340,7 +344,9 @@ RUN_BASH_SCRIPT_TOOL = Tool(
         },
         "required": ["script_content"]
     },
-    func=run_bash_script
+    func=run_bash_script,
+    timeout_seconds=120,
+    max_output_chars=30000,
 )
 
 GET_SYSTEM_INFO_TOOL = Tool(
@@ -351,7 +357,10 @@ GET_SYSTEM_INFO_TOOL = Tool(
         "properties": {},
         "required": []
     },
-    func=get_system_info
+    func=get_system_info,
+    timeout_seconds=15,
+    max_output_chars=10000,
+    is_readonly=True,
 )
 
 GET_ENV_VAR_TOOL = Tool(
@@ -364,7 +373,10 @@ GET_ENV_VAR_TOOL = Tool(
         },
         "required": ["name"]
     },
-    func=get_environment_variable
+    func=get_environment_variable,
+    timeout_seconds=10,
+    max_output_chars=5000,
+    is_readonly=True,
 )
 
 BASH_TOOLS = [

@@ -272,7 +272,10 @@ GET_STOCK_KLINE_TOOL = Tool(
         },
         "required": ["symbols"]
     },
-    func=get_stock_kline
+    func=get_stock_kline,
+    timeout_seconds=60,
+    max_output_chars=50000,
+    is_readonly=True,
 )
 
 GET_STOCK_SNAPSHOT_TOOL = Tool(
@@ -285,7 +288,10 @@ GET_STOCK_SNAPSHOT_TOOL = Tool(
         },
         "required": ["symbol"]
     },
-    func=get_stock_snapshot
+    func=get_stock_snapshot,
+    timeout_seconds=30,
+    max_output_chars=10000,
+    is_readonly=True,
 )
 
 GET_STOCK_FINANCIALS_TOOL = Tool(
@@ -299,7 +305,10 @@ GET_STOCK_FINANCIALS_TOOL = Tool(
         },
         "required": ["symbol"]
     },
-    func=get_stock_financials
+    func=get_stock_financials,
+    timeout_seconds=60,
+    max_output_chars=50000,
+    is_readonly=True,
 )
 
 GET_STOCK_INFO_TOOL = Tool(
@@ -312,5 +321,8 @@ GET_STOCK_INFO_TOOL = Tool(
         },
         "required": ["symbol"]
     },
-    func=get_stock_info
+    func=get_stock_info,
+    timeout_seconds=30,
+    max_output_chars=10000,
+    is_readonly=True,
 )

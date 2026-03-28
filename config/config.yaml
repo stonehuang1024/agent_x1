@@ -32,6 +32,14 @@ providers:
 timeout: 3600
 max_iterations: 200
 
+# Tool Safety Configuration
+# Global defaults for tool execution safety limits.
+# Individual tools can override these with their own values.
+tool_safety:
+  default_timeout: 120          # Default tool execution timeout in seconds
+  default_max_output: 50000     # Default max output chars (~12K tokens)
+  subprocess_timeout: 55        # Subprocess timeout for CLI tools (grep, fd, etc.)
+
 # System prompt
 system_prompt: |
   You are a helpful AI assistant with access to tools.
@@ -41,6 +49,17 @@ system_prompt: |
   Session file organization:
   - All files produced in each session should be saved to: results/session/{session_name}_{yyyy-mm-dd_H-M-S}/
   - This includes PDFs, data files, reports, and any other generated content
+
+  Tool Safety:
+  - All tools have timeout protection and output size limits.
+  - If a tool returns "[OUTPUT TRUNCATED]", narrow your query or use pagination parameters.
+  - If a tool returns a timeout error, try a simpler/smaller operation.
+
+  Code Exploration Tools:
+  - Use `grep_search` for regex/text search in files (prefer over run_command with grep).
+  - Use `glob_search` to find files by name pattern (e.g. "*.py", "test_*").
+  - Use `ls_directory` to quickly list directory contents before diving deeper.
+  - Start broad (find files), then narrow down (search within specific files).
 
 # Path Configuration
 paths:

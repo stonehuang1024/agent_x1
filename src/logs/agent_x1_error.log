@@ -80,3 +80,1046 @@ Traceback (most recent call last):
     with open(self.session_llm_file, 'a', encoding='utf-8') as f:
 FileNotFoundError: [Errno 2] No such file or directory: '/Users/eric/source/agent/agent_x1/results/session/session_144317_2026-03-25_14-43-17/session_llm.md'
 [2026-03-25 14:50:44.848] [17257] [8459837184] [ERROR] [main.py:434] | Config file not found: [Errno 2] No such file or directory: '/Users/eric/source/agent/agent_x1/results/session/session_144317_2026-03-25_14-43-17/session_llm.md'
+[2026-03-28 07:29:59.392] [70720] [8498182848] [ERROR] [web_tools.py:100] | [FetchURL] Failed
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connection.py", line 203, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/connection.py", line 85, in create_connection
+    raise err
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/connection.py", line 73, in create_connection
+    sock.connect(sa)
+ConnectionRefusedError: [Errno 61] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 496, in _make_request
+    conn.request(
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connection.py", line 395, in request
+    self.endheaders()
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/http/client.py", line 1298, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/http/client.py", line 1058, in _send_output
+    self.send(msg)
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/http/client.py", line 996, in send
+    self.connect()
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connection.py", line 243, in connect
+    self.sock = self._new_conn()
+                ^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connection.py", line 218, in _new_conn
+    raise NewConnectionError(
+urllib3.exceptions.NewConnectionError: <urllib3.connection.HTTPConnection object at 0x15aedeb50>: Failed to establish a new connection: [Errno 61] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 844, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/retry.py", line 515, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPConnectionPool(host='localhost', port=19999): Max retries exceeded with url: / (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x15aedeb50>: Failed to establish a new connection: [Errno 61] Connection refused'))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/tools/web_tools.py", line 65, in fetch_url
+    resp = requests.request(
+           ^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/api.py", line 59, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/adapters.py", line 519, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=19999): Max retries exceeded with url: / (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x15aedeb50>: Failed to establish a new connection: [Errno 61] Connection refused'))
+[2026-03-28 07:30:08.639] [71022] [8498182848] [ERROR] [web_tools.py:100] | [FetchURL] Failed
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connection.py", line 203, in _new_conn
+    sock = connection.create_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/connection.py", line 85, in create_connection
+    raise err
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/connection.py", line 73, in create_connection
+    sock.connect(sa)
+ConnectionRefusedError: [Errno 61] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 496, in _make_request
+    conn.request(
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connection.py", line 395, in request
+    self.endheaders()
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/http/client.py", line 1298, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/http/client.py", line 1058, in _send_output
+    self.send(msg)
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/http/client.py", line 996, in send
+    self.connect()
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connection.py", line 243, in connect
+    self.sock = self._new_conn()
+                ^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connection.py", line 218, in _new_conn
+    raise NewConnectionError(
+urllib3.exceptions.NewConnectionError: <urllib3.connection.HTTPConnection object at 0x12ab82450>: Failed to establish a new connection: [Errno 61] Connection refused
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 844, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/retry.py", line 515, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPConnectionPool(host='localhost', port=19999): Max retries exceeded with url: / (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x12ab82450>: Failed to establish a new connection: [Errno 61] Connection refused'))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/tools/web_tools.py", line 65, in fetch_url
+    resp = requests.request(
+           ^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/api.py", line 59, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/adapters.py", line 519, in send
+    raise ConnectionError(e, request=request)
+requests.exceptions.ConnectionError: HTTPConnectionPool(host='localhost', port=19999): Max retries exceeded with url: / (Caused by NewConnectionError('<urllib3.connection.HTTPConnection object at 0x12ab82450>: Failed to establish a new connection: [Errno 61] Connection refused'))
+[2026-03-28 07:48:26.594] [96572] [8498182848] [ERROR] [arxiv_tools.py:179] | [ArXivAPI] Error: Remote end closed connection without response
+[2026-03-28 07:48:29.381] [96572] [8498182848] [ERROR] [test_kimi_api.py:76] | Error: 404
+[2026-03-28 07:48:29.381] [96572] [8498182848] [ERROR] [test_kimi_api.py:77] | Response: {"error":{"message":"The requested resource was not found","type":"resource_not_found_error"}}
+[2026-03-28 07:48:29.668] [96572] [8498182848] [ERROR] [test_kimi_api.py:76] | Error: 404
+[2026-03-28 07:48:29.668] [96572] [8498182848] [ERROR] [test_kimi_api.py:77] | Response: {"error":{"message":"The requested resource was not found","type":"resource_not_found_error"}}
+[2026-03-28 07:48:29.900] [96572] [8498182848] [ERROR] [test_kimi_api.py:76] | Error: 404
+[2026-03-28 07:48:29.900] [96572] [8498182848] [ERROR] [test_kimi_api.py:77] | Response: {"error":{"message":"The requested resource was not found","type":"resource_not_found_error"}}
+[2026-03-28 07:48:30.221] [96572] [8498182848] [ERROR] [test_kimi_api.py:76] | Error: 404
+[2026-03-28 07:48:30.221] [96572] [8498182848] [ERROR] [test_kimi_api.py:77] | Response: {"error":{"message":"The requested resource was not found","type":"resource_not_found_error"}}
+[2026-03-28 07:48:36.044] [96572] [8498182848] [ERROR] [arxiv_tools.py:581] | [ArXivTool] Paper 9999.99999 not found on arXiv
+[2026-03-28 09:16:06.688] [74627] [8498182848] [ERROR] [main.py:561] | Configuration error: API key required for provider 'anthropic'. Set via: 1) Config file 'llm.api_key', 2) ANTHROPIC_API_KEY env var, or 3) --api-key command line argument
+[2026-03-28 11:22:51.382] [42426] [8498182848] [ERROR] [main.py:573] | Unexpected error: [Errno 32] Broken pipe
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/main.py", line 555, in main
+    run_single_query(engine, args.query, agent_loop)
+  File "/Users/simonwang/agent/agent_x1/main.py", line 397, in run_single_query
+    print("\n🤖 Assistant: ", end="", flush=True)
+BrokenPipeError: [Errno 32] Broken pipe
+[2026-03-28 11:23:36.477] [43949] [8498182848] [ERROR] [tool_scheduler.py:132] | Tool execution failed: the JSON object must be str, bytes or bytearray, not dict
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/runtime/tool_scheduler.py", line 106, in execute
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/core/tool.py", line 113, in execute
+    args: Dict[str, Any] = json.loads(arguments)
+                           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py", line 339, in loads
+    raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+TypeError: the JSON object must be str, bytes or bytearray, not dict
+[2026-03-28 11:23:36.481] [43949] [8498182848] [ERROR] [tool_scheduler.py:132] | Tool execution failed: the JSON object must be str, bytes or bytearray, not dict
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/runtime/tool_scheduler.py", line 106, in execute
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/core/tool.py", line 113, in execute
+    args: Dict[str, Any] = json.loads(arguments)
+                           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py", line 339, in loads
+    raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+TypeError: the JSON object must be str, bytes or bytearray, not dict
+[2026-03-28 11:23:36.482] [43949] [8498182848] [ERROR] [tool_scheduler.py:132] | Tool execution failed: the JSON object must be str, bytes or bytearray, not dict
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/runtime/tool_scheduler.py", line 106, in execute
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/core/tool.py", line 113, in execute
+    args: Dict[str, Any] = json.loads(arguments)
+                           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py", line 339, in loads
+    raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+TypeError: the JSON object must be str, bytes or bytearray, not dict
+[2026-03-28 11:23:36.483] [43949] [8498182848] [ERROR] [tool_scheduler.py:132] | Tool execution failed: the JSON object must be str, bytes or bytearray, not dict
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/runtime/tool_scheduler.py", line 106, in execute
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/core/tool.py", line 113, in execute
+    args: Dict[str, Any] = json.loads(arguments)
+                           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py", line 339, in loads
+    raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+TypeError: the JSON object must be str, bytes or bytearray, not dict
+[2026-03-28 11:23:36.484] [43949] [8498182848] [ERROR] [tool_scheduler.py:132] | Tool execution failed: the JSON object must be str, bytes or bytearray, not dict
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/runtime/tool_scheduler.py", line 106, in execute
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/core/tool.py", line 113, in execute
+    args: Dict[str, Any] = json.loads(arguments)
+                           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py", line 339, in loads
+    raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+TypeError: the JSON object must be str, bytes or bytearray, not dict
+[2026-03-28 11:23:36.485] [43949] [8498182848] [ERROR] [tool_scheduler.py:132] | Tool execution failed: the JSON object must be str, bytes or bytearray, not dict
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/runtime/tool_scheduler.py", line 106, in execute
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/core/tool.py", line 113, in execute
+    args: Dict[str, Any] = json.loads(arguments)
+                           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py", line 339, in loads
+    raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+TypeError: the JSON object must be str, bytes or bytearray, not dict
+[2026-03-28 11:23:38.297] [43949] [8498182848] [ERROR] [tool_scheduler.py:132] | Tool execution failed: the JSON object must be str, bytes or bytearray, not dict
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/runtime/tool_scheduler.py", line 106, in execute
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/core/tool.py", line 113, in execute
+    args: Dict[str, Any] = json.loads(arguments)
+                           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py", line 339, in loads
+    raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+TypeError: the JSON object must be str, bytes or bytearray, not dict
+[2026-03-28 11:23:38.298] [43949] [8498182848] [ERROR] [tool_scheduler.py:132] | Tool execution failed: the JSON object must be str, bytes or bytearray, not dict
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/runtime/tool_scheduler.py", line 106, in execute
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/core/tool.py", line 113, in execute
+    args: Dict[str, Any] = json.loads(arguments)
+                           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py", line 339, in loads
+    raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+TypeError: the JSON object must be str, bytes or bytearray, not dict
+[2026-03-28 11:23:38.299] [43949] [8498182848] [ERROR] [tool_scheduler.py:132] | Tool execution failed: the JSON object must be str, bytes or bytearray, not dict
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/runtime/tool_scheduler.py", line 106, in execute
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/core/tool.py", line 113, in execute
+    args: Dict[str, Any] = json.loads(arguments)
+                           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py", line 339, in loads
+    raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+TypeError: the JSON object must be str, bytes or bytearray, not dict
+[2026-03-28 11:23:38.300] [43949] [8498182848] [ERROR] [tool_scheduler.py:132] | Tool execution failed: the JSON object must be str, bytes or bytearray, not dict
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/runtime/tool_scheduler.py", line 106, in execute
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/core/tool.py", line 113, in execute
+    args: Dict[str, Any] = json.loads(arguments)
+                           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py", line 339, in loads
+    raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+TypeError: the JSON object must be str, bytes or bytearray, not dict
+[2026-03-28 11:23:38.301] [43949] [8498182848] [ERROR] [tool_scheduler.py:132] | Tool execution failed: the JSON object must be str, bytes or bytearray, not dict
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/runtime/tool_scheduler.py", line 106, in execute
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/core/tool.py", line 113, in execute
+    args: Dict[str, Any] = json.loads(arguments)
+                           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py", line 339, in loads
+    raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+TypeError: the JSON object must be str, bytes or bytearray, not dict
+[2026-03-28 11:23:38.302] [43949] [8498182848] [ERROR] [tool_scheduler.py:132] | Tool execution failed: the JSON object must be str, bytes or bytearray, not dict
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/runtime/tool_scheduler.py", line 106, in execute
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/core/tool.py", line 113, in execute
+    args: Dict[str, Any] = json.loads(arguments)
+                           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py", line 339, in loads
+    raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+TypeError: the JSON object must be str, bytes or bytearray, not dict
+[2026-03-28 11:23:40.089] [43949] [8498182848] [ERROR] [tool_scheduler.py:132] | Tool execution failed: the JSON object must be str, bytes or bytearray, not dict
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/runtime/tool_scheduler.py", line 106, in execute
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/core/tool.py", line 113, in execute
+    args: Dict[str, Any] = json.loads(arguments)
+                           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py", line 339, in loads
+    raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+TypeError: the JSON object must be str, bytes or bytearray, not dict
+[2026-03-28 11:23:40.091] [43949] [8498182848] [ERROR] [tool_scheduler.py:132] | Tool execution failed: the JSON object must be str, bytes or bytearray, not dict
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/runtime/tool_scheduler.py", line 106, in execute
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/core/tool.py", line 113, in execute
+    args: Dict[str, Any] = json.loads(arguments)
+                           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py", line 339, in loads
+    raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+TypeError: the JSON object must be str, bytes or bytearray, not dict
+[2026-03-28 11:23:40.092] [43949] [8498182848] [ERROR] [tool_scheduler.py:132] | Tool execution failed: the JSON object must be str, bytes or bytearray, not dict
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/runtime/tool_scheduler.py", line 106, in execute
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/core/tool.py", line 113, in execute
+    args: Dict[str, Any] = json.loads(arguments)
+                           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py", line 339, in loads
+    raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+TypeError: the JSON object must be str, bytes or bytearray, not dict
+[2026-03-28 11:23:40.093] [43949] [8498182848] [ERROR] [tool_scheduler.py:132] | Tool execution failed: the JSON object must be str, bytes or bytearray, not dict
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/runtime/tool_scheduler.py", line 106, in execute
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/core/tool.py", line 113, in execute
+    args: Dict[str, Any] = json.loads(arguments)
+                           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py", line 339, in loads
+    raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+TypeError: the JSON object must be str, bytes or bytearray, not dict
+[2026-03-28 11:23:40.094] [43949] [8498182848] [ERROR] [tool_scheduler.py:132] | Tool execution failed: the JSON object must be str, bytes or bytearray, not dict
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/runtime/tool_scheduler.py", line 106, in execute
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/core/tool.py", line 113, in execute
+    args: Dict[str, Any] = json.loads(arguments)
+                           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py", line 339, in loads
+    raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+TypeError: the JSON object must be str, bytes or bytearray, not dict
+[2026-03-28 11:23:40.095] [43949] [8498182848] [ERROR] [tool_scheduler.py:132] | Tool execution failed: the JSON object must be str, bytes or bytearray, not dict
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/runtime/tool_scheduler.py", line 106, in execute
+    result = await asyncio.wait_for(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/tasks.py", line 489, in wait_for
+    return fut.result()
+           ^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/concurrent/futures/thread.py", line 58, in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/core/tool.py", line 113, in execute
+    args: Dict[str, Any] = json.loads(arguments)
+                           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/json/__init__.py", line 339, in loads
+    raise TypeError(f'the JSON object must be str, bytes or bytearray, '
+TypeError: the JSON object must be str, bytes or bytearray, not dict
+[2026-03-28 11:23:40.095] [43949] [8498182848] [ERROR] [agent_loop.py:172] | Agent loop failed
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/runtime/agent_loop.py", line 135, in run
+    raise RuntimeError(f"Too many errors: {errors[0].error_message}")
+RuntimeError: Too many errors: the JSON object must be str, bytes or bytearray, not dict
+[2026-03-28 11:23:40.097] [43949] [8498182848] [ERROR] [main.py:573] | Unexpected error: Too many errors: the JSON object must be str, bytes or bytearray, not dict
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/main.py", line 555, in main
+    run_single_query(engine, args.query, agent_loop)
+  File "/Users/simonwang/agent/agent_x1/main.py", line 400, in run_single_query
+    response = agent_loop.run_sync(query)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/runtime/agent_loop.py", line 180, in run_sync
+    return asyncio.run(self.run(user_input))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/runtime/agent_loop.py", line 135, in run
+    raise RuntimeError(f"Too many errors: {errors[0].error_message}")
+RuntimeError: Too many errors: the JSON object must be str, bytes or bytearray, not dict
+[2026-03-28 11:24:57.877] [46001] [8498182848] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 400: Bad Request
+[2026-03-28 11:25:00.761] [46001] [8498182848] [ERROR] [test_kimi_api.py:76] | Error: 404
+[2026-03-28 11:25:00.761] [46001] [8498182848] [ERROR] [test_kimi_api.py:77] | Response: {"error":{"message":"The requested resource was not found","type":"resource_not_found_error"}}
+[2026-03-28 11:25:01.009] [46001] [8498182848] [ERROR] [test_kimi_api.py:76] | Error: 404
+[2026-03-28 11:25:01.009] [46001] [8498182848] [ERROR] [test_kimi_api.py:77] | Response: {"error":{"message":"The requested resource was not found","type":"resource_not_found_error"}}
+[2026-03-28 11:25:01.254] [46001] [8498182848] [ERROR] [test_kimi_api.py:76] | Error: 404
+[2026-03-28 11:25:01.254] [46001] [8498182848] [ERROR] [test_kimi_api.py:77] | Response: {"error":{"message":"The requested resource was not found","type":"resource_not_found_error"}}
+[2026-03-28 11:25:01.529] [46001] [8498182848] [ERROR] [test_kimi_api.py:76] | Error: 404
+[2026-03-28 11:25:01.529] [46001] [8498182848] [ERROR] [test_kimi_api.py:77] | Response: {"error":{"message":"The requested resource was not found","type":"resource_not_found_error"}}
+[2026-03-28 11:25:09.046] [46001] [8498182848] [ERROR] [arxiv_tools.py:581] | [ArXivTool] Paper 9999.99999 not found on arXiv
+[2026-03-28 11:26:12.218] [46873] [8498182848] [ERROR] [main.py:568] | Configuration error: API key required for provider 'anthropic'. Set via: 1) Config file 'llm.api_key', 2) ANTHROPIC_API_KEY env var, or 3) --api-key command line argument
+[2026-03-28 11:28:17.046] [48881] [6203568128] [ERROR] [web_tools.py:100] | [FetchURL] Failed
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 467, in _make_request
+    self._validate_conn(conn)
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1096, in _validate_conn
+    conn.connect()
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connection.py", line 642, in connect
+    sock_and_verified = _ssl_wrap_socket_and_match_hostname(
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connection.py", line 782, in _ssl_wrap_socket_and_match_hostname
+    ssl_sock = ssl_wrap_socket(
+               ^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/ssl_.py", line 470, in ssl_wrap_socket
+    ssl_sock = _ssl_wrap_socket_impl(sock, context, tls_in_tls, server_hostname)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/ssl_.py", line 514, in _ssl_wrap_socket_impl
+    return ssl_context.wrap_socket(sock, server_hostname=server_hostname)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/ssl.py", line 517, in wrap_socket
+    return self.sslsocket_class._create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/ssl.py", line 1104, in _create
+    self.do_handshake()
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/ssl.py", line 1382, in do_handshake
+    self._sslobj.do_handshake()
+ssl.SSLEOFError: [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1006)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 491, in _make_request
+    raise new_e
+urllib3.exceptions.SSLError: [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1006)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 844, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/retry.py", line 515, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.worldometers.info', port=443): Max retries exceeded with url: /world-population/ (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1006)')))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/tools/web_tools.py", line 65, in fetch_url
+    resp = requests.request(
+           ^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/api.py", line 59, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/adapters.py", line 517, in send
+    raise SSLError(e, request=request)
+requests.exceptions.SSLError: HTTPSConnectionPool(host='www.worldometers.info', port=443): Max retries exceeded with url: /world-population/ (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1006)')))
+[2026-03-28 11:28:23.711] [48881] [6203568128] [ERROR] [web_tools.py:100] | [FetchURL] Failed
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 467, in _make_request
+    self._validate_conn(conn)
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1096, in _validate_conn
+    conn.connect()
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connection.py", line 642, in connect
+    sock_and_verified = _ssl_wrap_socket_and_match_hostname(
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connection.py", line 782, in _ssl_wrap_socket_and_match_hostname
+    ssl_sock = ssl_wrap_socket(
+               ^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/ssl_.py", line 470, in ssl_wrap_socket
+    ssl_sock = _ssl_wrap_socket_impl(sock, context, tls_in_tls, server_hostname)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/ssl_.py", line 514, in _ssl_wrap_socket_impl
+    return ssl_context.wrap_socket(sock, server_hostname=server_hostname)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/ssl.py", line 517, in wrap_socket
+    return self.sslsocket_class._create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/ssl.py", line 1104, in _create
+    self.do_handshake()
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/ssl.py", line 1382, in do_handshake
+    self._sslobj.do_handshake()
+ssl.SSLError: [SSL] record layer failure (_ssl.c:1006)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 491, in _make_request
+    raise new_e
+urllib3.exceptions.SSLError: [SSL] record layer failure (_ssl.c:1006)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 844, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/retry.py", line 515, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='en.wikipedia.org', port=443): Max retries exceeded with url: /wiki/World_population (Caused by SSLError(SSLError(1, '[SSL] record layer failure (_ssl.c:1006)')))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/tools/web_tools.py", line 65, in fetch_url
+    resp = requests.request(
+           ^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/api.py", line 59, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/adapters.py", line 517, in send
+    raise SSLError(e, request=request)
+requests.exceptions.SSLError: HTTPSConnectionPool(host='en.wikipedia.org', port=443): Max retries exceeded with url: /wiki/World_population (Caused by SSLError(SSLError(1, '[SSL] record layer failure (_ssl.c:1006)')))
+[2026-03-28 11:29:49.266] [51138] [8498182848] [ERROR] [arxiv_tools.py:581] | [ArXivTool] Paper 9999.99999 not found on arXiv
+[2026-03-28 11:30:22.268] [51697] [8498182848] [ERROR] [arxiv_tools.py:581] | [ArXivTool] Paper 9999.99999 not found on arXiv
+[2026-03-28 11:37:23.276] [50666] [8498182848] [ERROR] [anthropic_engine.py:372] | [AnthropicEngine.call_llm] Request failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+[2026-03-28 11:40:03.380] [50666] [8498182848] [ERROR] [anthropic_engine.py:372] | [AnthropicEngine.call_llm] Request failed: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+[2026-03-28 11:50:52.167] [62594] [6206369792] [ERROR] [stock_tools.py:117] | [StockData] Error fetching CEG,VST,CCJ,GEV,VRT,ETN,DLR,EQIX,MPWR,PWR,FLNC,CMI,GNRC: Too Many Requests. Rate limited. Try after a while.
+[2026-03-28 11:51:23.099] [62594] [6206369792] [ERROR] [web_tools.py:100] | [FetchURL] Failed
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 536, in _make_request
+    response = conn.getresponse()
+               ^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connection.py", line 461, in getresponse
+    httplib_response = super().getresponse()
+                       ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/http/client.py", line 1395, in getresponse
+    response.begin()
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/http/client.py", line 325, in begin
+    version, status, reason = self._read_status()
+                              ^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/http/client.py", line 286, in _read_status
+    line = str(self.fp.readline(_MAXLINE + 1), "iso-8859-1")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/socket.py", line 718, in readinto
+    return self._sock.recv_into(b)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/ssl.py", line 1314, in recv_into
+    return self.read(nbytes, buffer)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/ssl.py", line 1166, in read
+    return self._sslobj.read(len, buffer)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TimeoutError: The read operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 844, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/retry.py", line 470, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/util.py", line 39, in reraise
+    raise value
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 538, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=read_timeout)
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 370, in _raise_timeout
+    raise ReadTimeoutError(
+urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='www.mckinsey.com', port=443): Read timed out. (read timeout=15)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/tools/web_tools.py", line 65, in fetch_url
+    resp = requests.request(
+           ^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/api.py", line 59, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/adapters.py", line 532, in send
+    raise ReadTimeout(e, request=request)
+requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='www.mckinsey.com', port=443): Read timed out. (read timeout=15)
+[2026-03-28 11:51:38.303] [62594] [6206369792] [ERROR] [web_tools.py:100] | [FetchURL] Failed
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 467, in _make_request
+    self._validate_conn(conn)
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1096, in _validate_conn
+    conn.connect()
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connection.py", line 642, in connect
+    sock_and_verified = _ssl_wrap_socket_and_match_hostname(
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connection.py", line 782, in _ssl_wrap_socket_and_match_hostname
+    ssl_sock = ssl_wrap_socket(
+               ^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/ssl_.py", line 470, in ssl_wrap_socket
+    ssl_sock = _ssl_wrap_socket_impl(sock, context, tls_in_tls, server_hostname)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/ssl_.py", line 514, in _ssl_wrap_socket_impl
+    return ssl_context.wrap_socket(sock, server_hostname=server_hostname)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/ssl.py", line 517, in wrap_socket
+    return self.sslsocket_class._create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/ssl.py", line 1104, in _create
+    self.do_handshake()
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/ssl.py", line 1382, in do_handshake
+    self._sslobj.do_handshake()
+TimeoutError: _ssl.c:989: The handshake operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 844, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/retry.py", line 470, in increment
+    raise reraise(type(error), error, _stacktrace)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/util.py", line 39, in reraise
+    raise value
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 491, in _make_request
+    raise new_e
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 469, in _make_request
+    self._raise_timeout(err=e, url=url, timeout_value=conn.timeout)
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 370, in _raise_timeout
+    raise ReadTimeoutError(
+urllib3.exceptions.ReadTimeoutError: HTTPSConnectionPool(host='www.bloomberg.com', port=443): Read timed out. (read timeout=15)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/tools/web_tools.py", line 65, in fetch_url
+    resp = requests.request(
+           ^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/api.py", line 59, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/adapters.py", line 532, in send
+    raise ReadTimeout(e, request=request)
+requests.exceptions.ReadTimeout: HTTPSConnectionPool(host='www.bloomberg.com', port=443): Read timed out. (read timeout=15)
+[2026-03-28 11:51:49.323] [62594] [6206369792] [ERROR] [web_tools.py:159] | [ExtractWebpage] Failed
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 467, in _make_request
+    self._validate_conn(conn)
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1096, in _validate_conn
+    conn.connect()
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connection.py", line 642, in connect
+    sock_and_verified = _ssl_wrap_socket_and_match_hostname(
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connection.py", line 782, in _ssl_wrap_socket_and_match_hostname
+    ssl_sock = ssl_wrap_socket(
+               ^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/ssl_.py", line 470, in ssl_wrap_socket
+    ssl_sock = _ssl_wrap_socket_impl(sock, context, tls_in_tls, server_hostname)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/ssl_.py", line 514, in _ssl_wrap_socket_impl
+    return ssl_context.wrap_socket(sock, server_hostname=server_hostname)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/ssl.py", line 517, in wrap_socket
+    return self.sslsocket_class._create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/ssl.py", line 1104, in _create
+    self.do_handshake()
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/ssl.py", line 1382, in do_handshake
+    self._sslobj.do_handshake()
+ssl.SSLError: [SSL] record layer failure (_ssl.c:1006)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 491, in _make_request
+    raise new_e
+urllib3.exceptions.SSLError: [SSL] record layer failure (_ssl.c:1006)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 844, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/retry.py", line 515, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.reuters.com', port=443): Max retries exceeded with url: /technology/artificial-intelligence/ai-boom-fuels-surge-data-center-power-demand-2025-03-15/ (Caused by SSLError(SSLError(1, '[SSL] record layer failure (_ssl.c:1006)')))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/tools/web_tools.py", line 125, in extract_webpage_text
+    resp = requests.get(url, headers=_DEFAULT_HEADERS, timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/api.py", line 73, in get
+    return request("get", url, params=params, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/api.py", line 59, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/adapters.py", line 517, in send
+    raise SSLError(e, request=request)
+requests.exceptions.SSLError: HTTPSConnectionPool(host='www.reuters.com', port=443): Max retries exceeded with url: /technology/artificial-intelligence/ai-boom-fuels-surge-data-center-power-demand-2025-03-15/ (Caused by SSLError(SSLError(1, '[SSL] record layer failure (_ssl.c:1006)')))
+[2026-03-28 11:51:54.535] [62594] [6206369792] [ERROR] [web_tools.py:159] | [ExtractWebpage] Failed
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 467, in _make_request
+    self._validate_conn(conn)
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 1096, in _validate_conn
+    conn.connect()
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connection.py", line 642, in connect
+    sock_and_verified = _ssl_wrap_socket_and_match_hostname(
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connection.py", line 782, in _ssl_wrap_socket_and_match_hostname
+    ssl_sock = ssl_wrap_socket(
+               ^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/ssl_.py", line 470, in ssl_wrap_socket
+    ssl_sock = _ssl_wrap_socket_impl(sock, context, tls_in_tls, server_hostname)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/ssl_.py", line 514, in _ssl_wrap_socket_impl
+    return ssl_context.wrap_socket(sock, server_hostname=server_hostname)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/ssl.py", line 517, in wrap_socket
+    return self.sslsocket_class._create(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/ssl.py", line 1104, in _create
+    self.do_handshake()
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/ssl.py", line 1382, in do_handshake
+    self._sslobj.do_handshake()
+ssl.SSLError: [SSL] record layer failure (_ssl.c:1006)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 790, in urlopen
+    response = self._make_request(
+               ^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 491, in _make_request
+    raise new_e
+urllib3.exceptions.SSLError: [SSL] record layer failure (_ssl.c:1006)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+           ^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/connectionpool.py", line 844, in urlopen
+    retries = retries.increment(
+              ^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/urllib3/util/retry.py", line 515, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+urllib3.exceptions.MaxRetryError: HTTPSConnectionPool(host='www.ft.com', port=443): Max retries exceeded with url: /content/ai-data-center-energy-consumption (Caused by SSLError(SSLError(1, '[SSL] record layer failure (_ssl.c:1006)')))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/tools/web_tools.py", line 125, in extract_webpage_text
+    resp = requests.get(url, headers=_DEFAULT_HEADERS, timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/api.py", line 73, in get
+    return request("get", url, params=params, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/api.py", line 59, in request
+    return session.request(method=method, url=url, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/lib/python3.11/site-packages/requests/adapters.py", line 517, in send
+    raise SSLError(e, request=request)
+requests.exceptions.SSLError: HTTPSConnectionPool(host='www.ft.com', port=443): Max retries exceeded with url: /content/ai-data-center-energy-consumption (Caused by SSLError(SSLError(1, '[SSL] record layer failure (_ssl.c:1006)')))
+[2026-03-28 12:19:09.234] [82300] [8498182848] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 400: Bad Request
+[2026-03-28 12:19:11.388] [82300] [8498182848] [ERROR] [test_kimi_api.py:76] | Error: 404
+[2026-03-28 12:19:11.388] [82300] [8498182848] [ERROR] [test_kimi_api.py:77] | Response: {"error":{"message":"The requested resource was not found","type":"resource_not_found_error"}}
+[2026-03-28 12:19:11.626] [82300] [8498182848] [ERROR] [test_kimi_api.py:76] | Error: 404
+[2026-03-28 12:19:11.626] [82300] [8498182848] [ERROR] [test_kimi_api.py:77] | Response: {"error":{"message":"The requested resource was not found","type":"resource_not_found_error"}}
+[2026-03-28 12:19:11.875] [82300] [8498182848] [ERROR] [test_kimi_api.py:76] | Error: 404
+[2026-03-28 12:19:11.875] [82300] [8498182848] [ERROR] [test_kimi_api.py:77] | Response: {"error":{"message":"The requested resource was not found","type":"resource_not_found_error"}}
+[2026-03-28 12:19:12.159] [82300] [8498182848] [ERROR] [test_kimi_api.py:76] | Error: 404
+[2026-03-28 12:19:12.159] [82300] [8498182848] [ERROR] [test_kimi_api.py:77] | Response: {"error":{"message":"The requested resource was not found","type":"resource_not_found_error"}}
+[2026-03-28 12:19:20.890] [82300] [8498182848] [ERROR] [arxiv_tools.py:581] | [ArXivTool] Paper 9999.99999 not found on arXiv
+[2026-03-28 12:34:57.873] [16573] [6249590784] [ERROR] [arxiv_tools.py:167] | [ArXivAPI] Timeout Error: The read operation timed out
+[2026-03-28 12:35:25.006] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:35:40.204] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:35:48.912] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:35:59.991] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:36:02.730] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:36:07.410] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:36:31.238] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:37:01.635] [16573] [6249590784] [ERROR] [arxiv_tools.py:167] | [ArXivAPI] Timeout Error: The read operation timed out
+[2026-03-28 12:37:35.139] [16573] [6249590784] [ERROR] [arxiv_tools.py:167] | [ArXivAPI] Timeout Error: The read operation timed out
+[2026-03-28 12:37:48.791] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:38:12.692] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:38:13.450] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:38:16.326] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:38:36.358] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:39:00.289] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:39:06.816] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:39:09.421] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:39:14.077] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:39:22.740] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:39:23.416] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:39:26.123] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:39:30.731] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:39:39.359] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:39:55.305] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:39:57.942] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:40:02.569] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:40:11.300] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:40:11.966] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:40:14.600] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:40:19.230] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:40:27.866] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:40:28.484] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:41:00.760] [16573] [6249590784] [ERROR] [arxiv_tools.py:167] | [ArXivAPI] Timeout Error: The read operation timed out
+[2026-03-28 12:41:35.149] [16573] [6249590784] [ERROR] [arxiv_tools.py:167] | [ArXivAPI] Timeout Error: The read operation timed out
+[2026-03-28 12:41:48.055] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:42:16.528] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:42:34.424] [16573] [6249590784] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Too Many Requests
+[2026-03-28 12:43:08.734] [16573] [6249590784] [ERROR] [arxiv_tools.py:167] | [ArXivAPI] Timeout Error: The read operation timed out
+[2026-03-28 12:43:33.108] [16573] [6249590784] [ERROR] [arxiv_tools.py:155] | [ArXivAPI] URL Error: [SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1006)
+[2026-03-28 12:58:28.462] [32744] [8693955264] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:58:31.213] [32744] [8693955264] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:58:45.905] [32744] [8693955264] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:58:54.576] [32744] [8693955264] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:59:05.653] [32744] [8693955264] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 12:59:08.338] [32744] [8693955264] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 13:00:00.035] [32744] [8693955264] [ERROR] [arxiv_tools.py:167] | [ArXivAPI] Timeout Error: The read operation timed out
+[2026-03-28 13:00:34.570] [32744] [8693955264] [ERROR] [arxiv_tools.py:167] | [ArXivAPI] Timeout Error: The read operation timed out
+[2026-03-28 13:00:37.742] [32744] [8693955264] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 13:01:10.137] [32744] [8693955264] [ERROR] [arxiv_tools.py:167] | [ArXivAPI] Timeout Error: The read operation timed out
+[2026-03-28 13:01:14.972] [32744] [8693955264] [ERROR] [arxiv_tools.py:138] | [ArXivAPI] HTTP Error 429: Unknown Error
+[2026-03-28 13:01:53.294] [32744] [8693955264] [ERROR] [arxiv_tools.py:167] | [ArXivAPI] Timeout Error: The read operation timed out
+[2026-03-28 13:02:33.694] [26176] [8693955264] [ERROR] [anthropic_engine.py:372] | [AnthropicEngine.call_llm] Request failed: HTTPSConnectionPool(host='api.kimi.com', port=443): Max retries exceeded with url: /coding/v1/messages (Caused by SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1006)')))
+[2026-03-28 13:02:36.952] [32744] [8693955264] [ERROR] [test_kimi_api.py:76] | Error: 404
+[2026-03-28 13:02:36.953] [32744] [8693955264] [ERROR] [test_kimi_api.py:77] | Response: {"error":{"message":"The requested resource was not found","type":"resource_not_found_error"}}
+[2026-03-28 13:02:37.243] [32744] [8693955264] [ERROR] [test_kimi_api.py:76] | Error: 404
+[2026-03-28 13:02:37.243] [32744] [8693955264] [ERROR] [test_kimi_api.py:77] | Response: {"error":{"message":"The requested resource was not found","type":"resource_not_found_error"}}
+[2026-03-28 13:02:37.505] [32744] [8693955264] [ERROR] [test_kimi_api.py:76] | Error: 404
+[2026-03-28 13:02:37.505] [32744] [8693955264] [ERROR] [test_kimi_api.py:77] | Response: {"error":{"message":"The requested resource was not found","type":"resource_not_found_error"}}
+[2026-03-28 13:02:37.769] [32744] [8693955264] [ERROR] [test_kimi_api.py:76] | Error: 404
+[2026-03-28 13:02:37.769] [32744] [8693955264] [ERROR] [test_kimi_api.py:77] | Response: {"error":{"message":"The requested resource was not found","type":"resource_not_found_error"}}
+[2026-03-28 13:02:44.670] [32744] [8693955264] [ERROR] [arxiv_tools.py:581] | [ArXivTool] Paper 9999.99999 not found on arXiv
+[2026-03-28 13:25:14.381] [66215] [8693955264] [ERROR] [arxiv_tools.py:581] | [ArXivTool] Paper 9999.99999 not found on arXiv
+[2026-03-28 13:26:41.727] [66901] [8693955264] [ERROR] [agent_loop.py:225] | Agent loop failed
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/runtime/agent_loop.py", line 180, in run
+    raise RuntimeError(f"Too many errors: {errors[0].error_message}")
+RuntimeError: Too many errors: Tool 'get_arxiv_paper_details' timed out after 0s
+[2026-03-28 13:26:41.742] [66901] [8693955264] [ERROR] [main.py:366] | Error: Too many errors: Tool 'get_arxiv_paper_details' timed out after 0s
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/main.py", line 355, in run_interactive_mode
+    response = agent_loop.run_sync(user_input)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/runtime/agent_loop.py", line 233, in run_sync
+    return asyncio.run(self.run(user_input))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/runtime/agent_loop.py", line 180, in run
+    raise RuntimeError(f"Too many errors: {errors[0].error_message}")
+RuntimeError: Too many errors: Tool 'get_arxiv_paper_details' timed out after 0s
+[2026-03-28 14:18:35.652] [97066] [8693955264] [ERROR] [agent_loop.py:225] | Agent loop failed
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/src/runtime/agent_loop.py", line 180, in run
+    raise RuntimeError(f"Too many errors: {errors[0].error_message}")
+RuntimeError: Too many errors: Tool 'web_search_exa' timed out after 0s
+[2026-03-28 14:18:35.658] [97066] [8693955264] [ERROR] [main.py:366] | Error: Too many errors: Tool 'web_search_exa' timed out after 0s
+Traceback (most recent call last):
+  File "/Users/simonwang/agent/agent_x1/main.py", line 355, in run_interactive_mode
+    response = agent_loop.run_sync(user_input)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/runtime/agent_loop.py", line 233, in run_sync
+    return asyncio.run(self.run(user_input))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/runners.py", line 190, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.10/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/Users/simonwang/agent/agent_x1/src/runtime/agent_loop.py", line 180, in run
+    raise RuntimeError(f"Too many errors: {errors[0].error_message}")
+RuntimeError: Too many errors: Tool 'web_search_exa' timed out after 0s
+[2026-03-28 14:29:43.810] [99989] [8693955264] [ERROR] [anthropic_engine.py:362] | [AnthropicEngine.call_llm] API Error: 504

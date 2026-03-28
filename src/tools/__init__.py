@@ -13,6 +13,7 @@ Categories:
 - data:       CSV/JSON/Excel read, stats analysis, filter, save, convert
 - reader:     URL/PDF/HTML to markdown conversion
 - arxiv:      Search and download academic papers from arXiv
+- codebase:   Regex search (grep), file pattern search (glob), directory listing (ls)
 
 Usage:
     from src.tools import ALL_TOOLS, TOOL_REGISTRY
@@ -34,9 +35,7 @@ from .tool_registry import CategorizedToolRegistry
 
 # --- Utility tools ---
 from .example_tools import (
-    WEATHER_TOOL,
     CALCULATOR_TOOL,
-    TIME_TOOL,
     SEARCH_TOOL,
 )
 
@@ -74,6 +73,7 @@ from .file_tools import (
     READ_FILE_TOOL,
     WRITE_FILE_TOOL,
     APPEND_FILE_TOOL,
+    EDIT_FILE_TOOL,
     LIST_DIRECTORY_TOOL,
     SEARCH_IN_FILES_TOOL,
     MOVE_FILE_TOOL,
@@ -155,12 +155,20 @@ from .arxiv_tools import (
     ARXIV_TOOLS,
 )
 
+# --- Codebase search tools ---
+from .codebase_search_tools import (
+    GREP_SEARCH_TOOL,
+    GLOB_SEARCH_TOOL,
+    LS_DIRECTORY_TOOL,
+    CODEBASE_TOOLS,
+)
+
 # ----------------------------------------------------------------
 # Build the categorized registry
 # ----------------------------------------------------------------
 TOOL_REGISTRY = CategorizedToolRegistry()
 
-TOOL_REGISTRY.register_many([WEATHER_TOOL, CALCULATOR_TOOL, TIME_TOOL, SEARCH_TOOL], "utility")
+TOOL_REGISTRY.register_many([CALCULATOR_TOOL, SEARCH_TOOL], "utility")
 TOOL_REGISTRY.register_many([GOOGLE_SEARCH_TOOL, EXA_SEARCH_TOOL], "search")
 TOOL_REGISTRY.register_many(
     [GET_STOCK_KLINE_TOOL, GET_STOCK_SNAPSHOT_TOOL, GET_STOCK_FINANCIALS_TOOL, GET_STOCK_INFO_TOOL, ANALYZE_STOCK_TOOL],
@@ -175,6 +183,7 @@ TOOL_REGISTRY.register_many(WEB_TOOLS, "web")
 TOOL_REGISTRY.register_many(DATA_TOOLS, "data")
 TOOL_REGISTRY.register_many(READER_TOOLS, "reader")
 TOOL_REGISTRY.register_many(ARXIV_TOOLS, "arxiv")
+TOOL_REGISTRY.register_many(CODEBASE_TOOLS, "codebase")
 
 # Flat list of every registered tool (preserves category insertion order)
 ALL_TOOLS = list(TOOL_REGISTRY._tools.values())
@@ -200,9 +209,7 @@ __all__ = [
     "READER_TOOLS",
     "ARXIV_TOOLS",
     # Utility
-    "WEATHER_TOOL",
     "CALCULATOR_TOOL",
-    "TIME_TOOL",
     "SEARCH_TOOL",
     # Search
     "GOOGLE_SEARCH_TOOL",
@@ -229,6 +236,7 @@ __all__ = [
     "COPY_FILE_TOOL",
     "DELETE_FILE_TOOL",
     "GET_FILE_INFO_TOOL",
+    "EDIT_FILE_TOOL",
     "CREATE_DIRECTORY_TOOL",
     # Bash
     "RUN_COMMAND_TOOL",
@@ -273,4 +281,9 @@ __all__ = [
     "GET_ARXIV_PAPER_DETAILS_TOOL",
     "DOWNLOAD_ARXIV_PDF_TOOL",
     "BATCH_DOWNLOAD_ARXIV_PDFS_TOOL",
+    # Codebase
+    "GREP_SEARCH_TOOL",
+    "GLOB_SEARCH_TOOL",
+    "LS_DIRECTORY_TOOL",
+    "CODEBASE_TOOLS",
 ]

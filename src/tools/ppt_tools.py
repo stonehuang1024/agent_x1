@@ -379,7 +379,9 @@ CREATE_PRESENTATION_TOOL = Tool(
         },
         "required": ["slides", "output_path"]
     },
-    func=create_presentation
+    func=create_presentation,
+    timeout_seconds=60,
+    max_output_chars=5000,
 )
 
 READ_PRESENTATION_TOOL = Tool(
@@ -392,7 +394,10 @@ READ_PRESENTATION_TOOL = Tool(
         },
         "required": ["path"]
     },
-    func=read_presentation
+    func=read_presentation,
+    timeout_seconds=30,
+    max_output_chars=30000,
+    is_readonly=True,
 )
 
 ADD_SLIDE_TOOL = Tool(
@@ -408,7 +413,9 @@ ADD_SLIDE_TOOL = Tool(
         },
         "required": ["path", "title", "content"]
     },
-    func=add_slide
+    func=add_slide,
+    timeout_seconds=30,
+    max_output_chars=5000,
 )
 
 EXPORT_PPT_TO_PDF_TOOL = Tool(
@@ -425,7 +432,9 @@ EXPORT_PPT_TO_PDF_TOOL = Tool(
         },
         "required": ["pptx_path"]
     },
-    func=export_presentation_to_pdf
+    func=export_presentation_to_pdf,
+    timeout_seconds=120,
+    max_output_chars=5000,
 )
 
 PPT_TOOLS = [

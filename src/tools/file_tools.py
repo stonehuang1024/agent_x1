@@ -15,10 +15,17 @@ import shutil
 import fnmatch
 import hashlib
 import logging
+import tempfile
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 
 from ..core.tool import Tool
+from ..core.edit_manager import (
+    DiffParser,
+    DiffParseError,
+    EditApplier,
+    get_edit_guard,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +70,10 @@ def read_file(path: str, encoding: str = "utf-8", max_chars: int = 50000) -> Dic
             content = f.read(max_chars)
 
         truncated = stat.st_size > max_chars
+
+        # Register read with FileEditingGuard for read-before-edit enforcement
+        get_edit_guard().record_read(str(resolved), content)
+
         return {
             "path": str(resolved),
             "size_bytes": stat.st_size,
@@ -420,6 +431,140 @@ def create_directory(path: str) -> Dict[str, Any]:
         return {"error": str(e), "path": path}
 
 
+def edit_file(
+    file_path: str,
+    diff: str,
+    replace_all: bool = False,
+    encoding: str = "utf-8",
+) -> Dict[str, Any]:
+    """
+    Edit a file using SEARCH/REPLACE diff blocks.
+
+    Requires the file to have been read via read_file first
+    (enforced by FileEditingGuard).
+
+    Args:
+        file_path: Path to the file to edit
+        diff: SEARCH/REPLACE formatted diff text
+        replace_all: Replace all matches (default: first match only)
+        encoding: File encoding (default: utf-8)
+
+    Returns:
+        Dictionary with edit result and diagnostics
+    """
+    try:
+        resolved = _resolve_safe_path(file_path)
+        resolved_str = str(resolved)
+
+        # 1. Read-before-edit guard check
+        guard = get_edit_guard()
+        allowed, reason = guard.validate_edit(resolved_str)
+        if not allowed:
+            return {"error": reason, "error_type": "edit_denied", "path": file_path}
+
+        # 2. Parse SEARCH/REPLACE blocks
+        try:
+            blocks = DiffParser.parse(diff)
+        except DiffParseError as e:
+            return {
+                "error": f"Diff parse error: {e}",
+                "error_type": "parse_error",
+                "path": file_path,
+            }
+
+        # 3. Read current file content (or handle create-new-file)
+        if resolved.exists():
+            with open(resolved, "r", encoding=encoding, errors="replace") as f:
+                current_content = f.read()
+        else:
+            # File does not exist — only valid for empty-SEARCH create semantics
+            if len(blocks) == 1 and not blocks[0].search:
+                current_content = ""
+            else:
+                return {
+                    "error": f"File not found: {file_path}",
+                    "error_type": "file_not_found",
+                    "path": file_path,
+                }
+
+        # 4. Verify content freshness (detect external modifications)
+        if resolved.exists() and not guard.verify_freshness(resolved_str, current_content):
+            return {
+                "error": (
+                    f"File '{file_path}' has been modified externally since "
+                    f"last read. Please re-read the file before editing."
+                ),
+                "error_type": "content_stale",
+                "path": file_path,
+                "suggestion": "Call read_file to refresh the cached content.",
+            }
+
+        # 5. Apply edits
+        result = EditApplier.apply(current_content, blocks, replace_all=replace_all)
+
+        if not result.success:
+            error_details = []
+            if result.failed_edits:
+                for fe in result.failed_edits:
+                    detail = {
+                        "block_index": fe.original_index + 1,
+                        "reason": fe.reason,
+                    }
+                    if fe.suggestions:
+                        detail["suggestions"] = fe.suggestions
+                    error_details.append(detail)
+            return {
+                "error": "Some edit blocks failed to apply",
+                "error_type": "apply_failed",
+                "path": file_path,
+                "failed_edits": error_details,
+                "hint": (
+                    "Ensure SEARCH blocks exactly match file content "
+                    "(including whitespace and indentation). "
+                    "Use more surrounding context to make matches unique."
+                ),
+            }
+
+        # 6. Atomic write: temp file -> os.replace()
+        resolved.parent.mkdir(parents=True, exist_ok=True)
+        fd, tmp_path = tempfile.mkstemp(
+            dir=str(resolved.parent),
+            prefix=f".{resolved.name}.",
+            suffix=".tmp",
+        )
+        try:
+            with os.fdopen(fd, "w", encoding=encoding) as tmp_f:
+                tmp_f.write(result.new_content)
+            os.replace(tmp_path, str(resolved))
+        except Exception:
+            # Clean up temp file on failure
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
+
+        # 7. Update guard cache with new content
+        guard.record_read(resolved_str, result.new_content)
+
+        response: Dict[str, Any] = {
+            "path": resolved_str,
+            "success": True,
+            "applied_edits": result.applied_count,
+            "file_size_bytes": resolved.stat().st_size,
+            "lines": result.new_content.count("\n") + 1,
+        }
+        if result.snippet_after:
+            response["snippet_after"] = result.snippet_after
+        return response
+
+    except PermissionError as e:
+        return {"error": str(e), "error_type": "permission_error", "path": file_path}
+    except Exception as e:
+        logger.exception("[EditFile] Failed")
+        return {"error": str(e), "error_type": "unexpected_error", "path": file_path}
+
+
 # Tool Definitions
 READ_FILE_TOOL = Tool(
     name="read_file",
@@ -436,7 +581,10 @@ READ_FILE_TOOL = Tool(
         },
         "required": ["path"]
     },
-    func=read_file
+    func=read_file,
+    timeout_seconds=30,
+    max_output_chars=60000,
+    is_readonly=True,
 )
 
 WRITE_FILE_TOOL = Tool(
@@ -455,7 +603,9 @@ WRITE_FILE_TOOL = Tool(
         },
         "required": ["path", "content"]
     },
-    func=write_file
+    func=write_file,
+    timeout_seconds=30,
+    max_output_chars=5000,
 )
 
 APPEND_FILE_TOOL = Tool(
@@ -470,7 +620,9 @@ APPEND_FILE_TOOL = Tool(
         },
         "required": ["path", "content"]
     },
-    func=append_file
+    func=append_file,
+    timeout_seconds=30,
+    max_output_chars=5000,
 )
 
 LIST_DIRECTORY_TOOL = Tool(
@@ -491,7 +643,10 @@ LIST_DIRECTORY_TOOL = Tool(
         },
         "required": ["path"]
     },
-    func=list_directory
+    func=list_directory,
+    timeout_seconds=30,
+    max_output_chars=30000,
+    is_readonly=True,
 )
 
 SEARCH_IN_FILES_TOOL = Tool(
@@ -511,7 +666,10 @@ SEARCH_IN_FILES_TOOL = Tool(
         },
         "required": ["directory", "query"]
     },
-    func=search_in_files
+    func=search_in_files,
+    timeout_seconds=60,
+    max_output_chars=30000,
+    is_readonly=True,
 )
 
 MOVE_FILE_TOOL = Tool(
@@ -526,7 +684,9 @@ MOVE_FILE_TOOL = Tool(
         },
         "required": ["source", "destination"]
     },
-    func=move_file
+    func=move_file,
+    timeout_seconds=30,
+    max_output_chars=5000,
 )
 
 COPY_FILE_TOOL = Tool(
@@ -541,7 +701,9 @@ COPY_FILE_TOOL = Tool(
         },
         "required": ["source", "destination"]
     },
-    func=copy_file
+    func=copy_file,
+    timeout_seconds=60,
+    max_output_chars=5000,
 )
 
 DELETE_FILE_TOOL = Tool(
@@ -555,7 +717,9 @@ DELETE_FILE_TOOL = Tool(
         },
         "required": ["path"]
     },
-    func=delete_file
+    func=delete_file,
+    timeout_seconds=30,
+    max_output_chars=5000,
 )
 
 GET_FILE_INFO_TOOL = Tool(
@@ -568,7 +732,10 @@ GET_FILE_INFO_TOOL = Tool(
         },
         "required": ["path"]
     },
-    func=get_file_info
+    func=get_file_info,
+    timeout_seconds=15,
+    max_output_chars=5000,
+    is_readonly=True,
 )
 
 CREATE_DIRECTORY_TOOL = Tool(
@@ -581,13 +748,66 @@ CREATE_DIRECTORY_TOOL = Tool(
         },
         "required": ["path"]
     },
-    func=create_directory
+    func=create_directory,
+    timeout_seconds=15,
+    max_output_chars=5000,
+)
+
+EDIT_FILE_TOOL = Tool(
+    name="edit_file",
+    description=(
+        "Perform precise code edits using SEARCH/REPLACE blocks. "
+        "Rules: (1) You MUST call read_file first before editing any file. "
+        "(2) SEARCH blocks must exactly match file content including indentation. "
+        "(3) Each SEARCH must uniquely match one location unless replace_all=true. "
+        "(4) For small files (<100 lines) or large rewrites (>50%%), prefer write_file. "
+        "Diff format:\n"
+        "------- SEARCH\n"
+        "[exact original code]\n"
+        "=======\n"
+        "[replacement code]\n"
+        "+++++++ REPLACE\n"
+        "Multiple SEARCH/REPLACE blocks supported in a single call."
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "file_path": {
+                "type": "string",
+                "description": "File path to edit (must have been read via read_file first)",
+            },
+            "diff": {
+                "type": "string",
+                "description": (
+                    "SEARCH/REPLACE formatted diff text. Format:\n"
+                    "------- SEARCH\n"
+                    "[exact original code]\n"
+                    "=======\n"
+                    "[replacement code]\n"
+                    "+++++++ REPLACE"
+                ),
+            },
+            "replace_all": {
+                "type": "boolean",
+                "description": "Replace all matches of each SEARCH block (default: false)",
+            },
+            "encoding": {
+                "type": "string",
+                "description": "File encoding (default: utf-8)",
+            },
+        },
+        "required": ["file_path", "diff"],
+    },
+    func=edit_file,
+    timeout_seconds=30,
+    max_output_chars=10000,
 )
 
 FILE_TOOLS = [
     READ_FILE_TOOL,
     WRITE_FILE_TOOL,
     APPEND_FILE_TOOL,
+    EDIT_FILE_TOOL,
     LIST_DIRECTORY_TOOL,
     SEARCH_IN_FILES_TOOL,
     MOVE_FILE_TOOL,

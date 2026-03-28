@@ -700,7 +700,10 @@ READ_PDF_TOOL = Tool(
         },
         "required": ["path"]
     },
-    func=read_pdf
+    func=read_pdf,
+    timeout_seconds=60,
+    max_output_chars=60000,
+    is_readonly=True,
 )
 
 GET_PDF_METADATA_TOOL = Tool(
@@ -713,7 +716,10 @@ GET_PDF_METADATA_TOOL = Tool(
         },
         "required": ["path"]
     },
-    func=get_pdf_metadata
+    func=get_pdf_metadata,
+    timeout_seconds=15,
+    max_output_chars=5000,
+    is_readonly=True,
 )
 
 MERGE_PDFS_TOOL = Tool(
@@ -731,7 +737,9 @@ MERGE_PDFS_TOOL = Tool(
         },
         "required": ["input_paths", "output_path"]
     },
-    func=merge_pdfs
+    func=merge_pdfs,
+    timeout_seconds=120,
+    max_output_chars=5000,
 )
 
 SPLIT_PDF_TOOL = Tool(
@@ -746,7 +754,9 @@ SPLIT_PDF_TOOL = Tool(
         },
         "required": ["path", "output_dir"]
     },
-    func=split_pdf
+    func=split_pdf,
+    timeout_seconds=120,
+    max_output_chars=5000,
 )
 
 CREATE_PDF_FROM_TEXT_TOOL = Tool(
@@ -762,7 +772,9 @@ CREATE_PDF_FROM_TEXT_TOOL = Tool(
         },
         "required": ["text", "output_path"]
     },
-    func=create_pdf_from_text
+    func=create_pdf_from_text,
+    timeout_seconds=60,
+    max_output_chars=5000,
 )
 
 EXTRACT_PDF_IMAGES_TOOL = Tool(
@@ -776,7 +788,9 @@ EXTRACT_PDF_IMAGES_TOOL = Tool(
         },
         "required": ["path", "output_dir"]
     },
-    func=extract_pdf_images
+    func=extract_pdf_images,
+    timeout_seconds=120,
+    max_output_chars=10000,
 )
 
 MARKDOWN_TO_PDF_TOOL = Tool(
@@ -791,7 +805,9 @@ MARKDOWN_TO_PDF_TOOL = Tool(
         },
         "required": ["markdown_path", "output_path"]
     },
-    func=markdown_to_pdf
+    func=markdown_to_pdf,
+    timeout_seconds=60,
+    max_output_chars=5000,
 )
 
 PDF_TOOLS = [

@@ -30,6 +30,7 @@ import sys
 import argparse
 import re
 import os
+from pathlib import Path
 from typing import Optional
 
 # Terminal handling for macOS/Linux
@@ -60,6 +61,16 @@ from src.util.logger import get_logger, setup_logging
 from src.engine import create_engine, ProviderType
 from src.tools import ALL_TOOLS, TOOL_CATEGORIES_MAP
 from src.skills import SkillRegistry, SkillContextManager
+from src.core.tool import configure_tool_defaults
+from src.tools.codebase_search_tools import configure_subprocess_timeout
+
+# New redesign imports
+from src.session import SessionManager, get_default_manager as get_new_session_manager
+from src.memory import MemoryController, MemoryStore
+from src.prompt import PromptProvider
+from src.context import ContextAssembler
+from src.runtime import AgentLoop, ToolScheduler, LoopDetector, AgentConfig
+from src.core.events import EventBus, get_event_bus
 
 logger = get_logger(__name__)
 
@@ -136,12 +147,96 @@ def create_and_configure_engine(config: AppConfig):
     return engine
 
 
-def run_interactive_mode(engine) -> None:
+def create_agent_loop(engine, config: AppConfig, use_new_system: bool = False) -> Optional[AgentLoop]:
+    """
+    Create AgentLoop with all components for the new architecture.
+    
+    Args:
+        engine: Configured engine instance
+        config: Application configuration
+        use_new_system: If True, create AgentLoop; otherwise return None
+        
+    Returns:
+        AgentLoop instance if use_new_system is True, otherwise None
+    """
+    if not use_new_system:
+        return None
+    
+    try:
+        # Initialize EventBus
+        event_bus = get_event_bus()
+        
+        # Initialize new session manager
+        new_session_manager = get_new_session_manager(config)
+        new_session_manager.event_bus = event_bus
+        
+        # Create a new session
+        session = new_session_manager.create_session(
+            name="Agent X1 Session",
+            working_dir=os.getcwd()
+        )
+        new_session_manager.activate_session(session.id)
+        
+        # Initialize memory system
+        memory_store = MemoryStore(str(Path(config.paths.data_dir) / "agent_x1.db"))
+        memory_controller = MemoryController(memory_store)
+        
+        # Initialize prompt provider
+        prompt_provider = PromptProvider()
+        
+        # Initialize context assembler
+        context_assembler = ContextAssembler(
+            session_manager=new_session_manager,
+            memory_controller=memory_controller,
+            prompt_provider=prompt_provider,
+            max_tokens=config.llm.max_tokens * 10  # Context window estimate
+        )
+        
+        # Initialize runtime components
+        from src.core.tool import ToolRegistry
+        tool_registry = ToolRegistry()
+        for tool in engine.tools.values():
+            tool_registry.register(tool)
+        
+        tool_scheduler = ToolScheduler(tool_registry, max_parallel=5, event_bus=event_bus)
+        loop_detector = LoopDetector(
+            window_size=6,
+            threshold=0.85,
+            max_repetitions=3
+        )
+        
+        agent_config = AgentConfig(
+            max_iterations=config.llm.max_iterations,
+            max_parallel_tools=5,
+            default_tool_timeout=config.tool_safety.default_timeout,
+        )
+        
+        # Create AgentLoop
+        agent_loop = AgentLoop(
+            engine=engine,
+            session_manager=new_session_manager,
+            context_assembler=context_assembler,
+            tool_scheduler=tool_scheduler,
+            loop_detector=loop_detector,
+            config=agent_config,
+            event_bus=event_bus
+        )
+        
+        logger.info("[AgentLoop] New architecture initialized successfully")
+        return agent_loop
+        
+    except Exception as e:
+        logger.warning(f"[AgentLoop] Failed to initialize new architecture: {e}")
+        return None
+
+
+def run_interactive_mode(engine, agent_loop: Optional[AgentLoop] = None) -> None:
     """
     Run interactive chat mode.
     
     Args:
         engine: Configured engine instance
+        agent_loop: Optional AgentLoop for new architecture
     """
     print("\n" + "=" * 60)
     print("🤖 Agent X1 - Interactive Mode")
@@ -223,26 +318,43 @@ def run_interactive_mode(engine) -> None:
             
             if cmd == '/clear':
                 engine.clear_history()
+                if agent_loop:
+                    # New architecture doesn't need explicit clear
+                    pass
                 print("\n🧹 Conversation history cleared.")
                 continue
             
             if cmd == '/history':
-                history = engine.get_conversation_history()
-                print(f"\n📜 History ({len(history)} messages):")
-                for i, msg in enumerate(history[-10:], 1):  # Show last 10
-                    role = msg.get('role', 'unknown')
-                    content = msg.get('content', '')
-                    if content:
-                        preview = content[:50] + "..." if len(content) > 50 else content
-                        print(f"  {i}. [{role}] {preview}")
-                    elif msg.get('tool_calls'):
-                        tool_names = [tc['function']['name'] for tc in msg['tool_calls']]
-                        print(f"  {i}. [{role}] Tools: {', '.join(tool_names)}")
+                if agent_loop:
+                    # Use new session manager
+                    from src.session import SessionManager
+                    sm = agent_loop.session_manager
+                    if sm.active_session:
+                        turns = sm.get_history(recent_n=10)
+                        print(f"\n📜 History ({len(turns)} turns):")
+                        for i, turn in enumerate(turns, 1):
+                            preview = turn.content[:50] + "..." if len(turn.content) > 50 else turn.content
+                            print(f"  {i}. [{turn.role}] {preview}")
+                else:
+                    history = engine.get_conversation_history()
+                    print(f"\n📜 History ({len(history)} messages):")
+                    for i, msg in enumerate(history[-10:], 1):
+                        role = msg.get('role', 'unknown')
+                        content = msg.get('content', '')
+                        if content:
+                            preview = content[:50] + "..." if len(content) > 50 else content
+                            print(f"  {i}. [{role}] {preview}")
+                        elif msg.get('tool_calls'):
+                            tool_names = [tc['function']['name'] for tc in msg['tool_calls']]
+                            print(f"  {i}. [{role}] Tools: {', '.join(tool_names)}")
                 continue
             
             # Process query
             print("\n🤖 Assistant: ", end="", flush=True)
-            response = engine.chat(user_input)
+            if agent_loop:
+                response = agent_loop.run_sync(user_input)
+            else:
+                response = engine.chat(user_input)
             print(response)
             
         except KeyboardInterrupt:
@@ -255,7 +367,7 @@ def run_interactive_mode(engine) -> None:
             print(f"\n❌ Error: {e}")
 
 
-def run_single_query(engine, query: str) -> str:
+def run_single_query(engine, query: str, agent_loop: Optional[AgentLoop] = None) -> str:
     """
     Run single query and return response.
     Auto-activates a matching skill if found.
@@ -263,6 +375,7 @@ def run_single_query(engine, query: str) -> str:
     Args:
         engine: Configured engine instance
         query: User query string
+        agent_loop: Optional AgentLoop for new architecture
         
     Returns:
         Assistant response
@@ -285,7 +398,10 @@ def run_single_query(engine, query: str) -> str:
     print(f"\n👤 User: {query}")
     print("\n🤖 Assistant: ", end="", flush=True)
     
-    response = engine.chat(query)
+    if agent_loop:
+        response = agent_loop.run_sync(query)
+    else:
+        response = engine.chat(query)
     print(response)
     
     return response
@@ -359,6 +475,14 @@ Examples:
         help='Logging level'
     )
     
+    # New architecture flag
+    parser.add_argument(
+        '--new-arch',
+        action='store_true',
+        default=True,
+        help='Use the new AgentLoop architecture (experimental)'
+    )
+    
     return parser.parse_args()
 
 
@@ -409,6 +533,13 @@ def main() -> int:
         logger.info(f"Provider: {config.llm.provider}")
         logger.info(f"Model: {config.llm.model}")
         
+        # Apply tool safety configuration from config file
+        configure_tool_defaults(
+            default_timeout=config.tool_safety.default_timeout,
+            default_max_output=config.tool_safety.default_max_output,
+        )
+        configure_subprocess_timeout(config.tool_safety.subprocess_timeout)
+        
         # Initialize session manager
         session_manager = init_session_manager()
         session_dir = session_manager.get_session_directory()
@@ -422,11 +553,17 @@ def main() -> int:
         if engine.skill_context:
             engine.skill_context.set_session_dir(str(session_dir))
         
+        # Create AgentLoop for new architecture (if enabled)
+        agent_loop = None
+        if args.new_arch:
+            print("\n🔧 Using new AgentLoop architecture (experimental)")
+            agent_loop = create_agent_loop(engine, config, use_new_system=True)
+        
         # Run mode
         if args.query:
-            run_single_query(engine, args.query)
+            run_single_query(engine, args.query, agent_loop)
         else:
-            run_interactive_mode(engine)
+            run_interactive_mode(engine, agent_loop)
         
         return 0
         

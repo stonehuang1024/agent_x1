@@ -572,5 +572,8 @@ ANALYZE_STOCK_TOOL = Tool(
         },
         "required": ["symbol"]
     },
-    func=analyze_stock
+    func=analyze_stock,
+    timeout_seconds=180,
+    max_output_chars=30000,
+    is_readonly=True,
 )
