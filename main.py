@@ -72,6 +72,13 @@ from src.context import ContextAssembler
 from src.runtime import AgentLoop, ToolScheduler, LoopDetector, AgentConfig
 from src.core.events import EventBus, get_event_bus
 
+# New logging/display system imports
+from src.util.display import ConsoleDisplay
+from src.util.activity_stream import ActivityStream
+from src.util.structured_log import StructuredLogger
+from src.util.token_tracker import TokenTracker
+from src.util.log_integration import LogIntegration
+
 logger = get_logger(__name__)
 
 
@@ -147,7 +154,11 @@ def create_and_configure_engine(config: AppConfig):
     return engine
 
 
-def create_agent_loop(engine, config: AppConfig, use_new_system: bool = False) -> Optional[AgentLoop]:
+def create_agent_loop(engine, config: AppConfig, use_new_system: bool = False,
+                      verbose: bool = False, debug: bool = False,
+                      session_dir: Optional[str] = None,
+                      continue_session: bool = False,
+                      resume_session_id: Optional[str] = None) -> Optional[AgentLoop]:
     """
     Create AgentLoop with all components for the new architecture.
     
@@ -155,6 +166,8 @@ def create_agent_loop(engine, config: AppConfig, use_new_system: bool = False) -
         engine: Configured engine instance
         config: Application configuration
         use_new_system: If True, create AgentLoop; otherwise return None
+        verbose: Enable verbose display output
+        debug: Enable debug display output
         
     Returns:
         AgentLoop instance if use_new_system is True, otherwise None
@@ -170,12 +183,35 @@ def create_agent_loop(engine, config: AppConfig, use_new_system: bool = False) -
         new_session_manager = get_new_session_manager(config)
         new_session_manager.event_bus = event_bus
         
-        # Create a new session
-        session = new_session_manager.create_session(
-            name="Agent X1 Session",
-            working_dir=os.getcwd()
-        )
-        new_session_manager.activate_session(session.id)
+        # Session recovery or creation
+        if continue_session:
+            try:
+                session = new_session_manager.continue_session()
+                print(f"\n🔄 Resumed session {session.id[:8]} ({session.turn_count} turns, {session.budget.used} tokens used)")
+            except ValueError as e:
+                print(f"\n⚠️  {e}")
+                print("   Creating new session instead.")
+                session = new_session_manager.create_session(
+                    name="Agent X1 Session",
+                    working_dir=os.getcwd(),
+                    session_dir=session_dir,
+                )
+                new_session_manager.activate_session(session.id)
+        elif resume_session_id:
+            try:
+                session = new_session_manager.resume_session_by_id(resume_session_id)
+                print(f"\n🔄 Resumed session {session.id[:8]} ({session.turn_count} turns, {session.budget.used} tokens used)")
+            except ValueError as e:
+                print(f"\n❌ {e}")
+                return None
+        else:
+            # Create a new session (reuse legacy session dir if provided)
+            session = new_session_manager.create_session(
+                name="Agent X1 Session",
+                working_dir=os.getcwd(),
+                session_dir=session_dir,
+            )
+            new_session_manager.activate_session(session.id)
         
         # Initialize memory system
         memory_store = MemoryStore(str(Path(config.paths.data_dir) / "agent_x1.db"))
@@ -211,6 +247,42 @@ def create_agent_loop(engine, config: AppConfig, use_new_system: bool = False) -
             default_tool_timeout=config.tool_safety.default_timeout,
         )
         
+        # Initialize logging/display chain
+        display = ConsoleDisplay(verbose=verbose, debug=debug)
+        activity_stream = ActivityStream(display=display, verbose=verbose or debug)
+        token_tracker = TokenTracker()
+        
+        # Mirror activity stream output to a markdown file in session dir
+        if session.session_dir:
+            activity_log_path = str(Path(session.session_dir) / "session_activity.md")
+            display.set_log_file(activity_log_path)
+        
+        # Initialize structured logger (writes to session directory)
+        structured_logger = None
+        if session.session_dir:
+            structured_logger = StructuredLogger(
+                session_dir=session.session_dir,
+                session_id=session.id,
+            )
+        
+        # Wire up EventBus log integration
+        log_integration = LogIntegration(
+            display=display,
+            activity_stream=activity_stream,
+            structured_logger=structured_logger,
+            token_tracker=token_tracker,
+        )
+        log_integration.setup(event_bus)
+        
+        # Show log file locations to user
+        display.blank_line()
+        display.info("Activity Stream: real-time output below")
+        if structured_logger and session.session_dir:
+            display.info(f"Session logs:     {session.session_dir}/session_log.jsonl")
+            display.info(f"Session activity: {session.session_dir}/session_activity.md")
+            display.info(f"Session summary:  {session.session_dir}/session_summary.md")
+        display.blank_line()
+        
         # Create AgentLoop
         agent_loop = AgentLoop(
             engine=engine,
@@ -219,7 +291,9 @@ def create_agent_loop(engine, config: AppConfig, use_new_system: bool = False) -
             tool_scheduler=tool_scheduler,
             loop_detector=loop_detector,
             config=agent_config,
-            event_bus=event_bus
+            event_bus=event_bus,
+            display=display,
+            activity_stream=activity_stream,
         )
         
         logger.info("[AgentLoop] New architecture initialized successfully")
@@ -483,6 +557,38 @@ Examples:
         help='Use the new AgentLoop architecture (experimental)'
     )
     
+    # Session recovery
+    parser.add_argument(
+        '--continue', '-C',
+        action='store_true',
+        dest='continue_session',
+        default=False,
+        help='Resume the most recent paused or active session'
+    )
+    
+    parser.add_argument(
+        '--resume',
+        type=str,
+        default=None,
+        metavar='SESSION_ID',
+        help='Resume a specific session by ID'
+    )
+    
+    # Logging/display options
+    parser.add_argument(
+        '--verbose', '-v',
+        action='store_true',
+        default=False,
+        help='Enable verbose output (show more details in activity stream)'
+    )
+    
+    parser.add_argument(
+        '--debug',
+        action='store_true',
+        default=False,
+        help='Enable debug output (implies --verbose, shows debug-level info)'
+    )
+    
     return parser.parse_args()
 
 
@@ -544,7 +650,8 @@ def main() -> int:
         session_manager = init_session_manager()
         session_dir = session_manager.get_session_directory()
         logger.info(f"Session directory: {session_dir}")
-        print(f"📁 Session: {session_dir.name}")
+        print(f"\n📁 Session directory: {session_dir}")
+        print(f"   └── session_llm.md  (LLM interaction log)")
         
         # Create engine
         engine = create_and_configure_engine(config)
@@ -557,13 +664,35 @@ def main() -> int:
         agent_loop = None
         if args.new_arch:
             print("\n🔧 Using new AgentLoop architecture (experimental)")
-            agent_loop = create_agent_loop(engine, config, use_new_system=True)
+            agent_loop = create_agent_loop(
+                engine, config,
+                use_new_system=True,
+                verbose=args.verbose,
+                debug=args.debug,
+                session_dir=str(session_dir) if session_dir else None,
+                continue_session=args.continue_session,
+                resume_session_id=args.resume,
+            )
         
         # Run mode
         if args.query:
             run_single_query(engine, args.query, agent_loop)
         else:
             run_interactive_mode(engine, agent_loop)
+        
+        # Finalize new-architecture session (generate summary, flush logs)
+        if agent_loop:
+            try:
+                sm = agent_loop.session_manager
+                if sm.active_session:
+                    logger.info("[Session] New-arch session completing and finalizing")
+                    sm.complete_session()
+            except Exception as e:
+                logger.warning(f"[Session] Failed to finalize new-arch session: {e}")
+            # Deactivate legacy session manager to prevent it from writing
+            # incorrect summary (it has no LLM call records in new-arch mode)
+            if session_manager and session_manager.session_active:
+                session_manager.session_active = False
         
         return 0
         

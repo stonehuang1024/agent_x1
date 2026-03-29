@@ -7,6 +7,7 @@ from typing import List, Dict, Any, Optional
 
 from src.core.tool import ToolRegistry, Tool
 from src.core.events import EventBus, AgentEvent
+from src.util.logger import truncate_for_log, set_session_id, _thread_local
 from .models import ToolCallRecord, ToolExecutionState
 
 logger = logging.getLogger(__name__)
@@ -32,9 +33,22 @@ class ToolScheduler:
             self.event_bus.emit(event_type, **kwargs)
         except Exception as e:
             logger.debug(f"EventBus emit error: {e}")
+
+    @staticmethod
+    def _execute_in_thread(tool: Tool, arguments: Dict[str, Any], session_id: Optional[str]) -> str:
+        """Execute tool in worker thread with session_id propagation."""
+        # Propagate session_id from main thread to this worker thread
+        if session_id:
+            set_session_id(session_id)
+        return tool.execute(arguments)
     
     async def schedule(self, records: List[ToolCallRecord]) -> List[ToolCallRecord]:
         """Execute multiple tool calls."""
+        tool_names = [r.tool_name for r in records]
+        logger.debug(
+            "[ToolScheduler] Scheduling | tool_count=%d | tools=%s | parallel=False",
+            len(records), tool_names
+        )
         for record in records:
             await self._execute_with_retry(record)
         return records
@@ -100,15 +114,24 @@ class ToolScheduler:
             # Execution phase with timing
             record.mark_started()
             
+            # DEBUG: Executing
+            logger.debug(
+                "[ToolScheduler] Executing | name=%s | call_id=%s | arguments_preview=\"%s\"",
+                record.tool_name, record.id, truncate_for_log(str(record.arguments))
+            )
+            
             # Execute in thread pool with timeout
-            effective_timeout = record.get_effective_timeout()
+            # Capture session_id from main thread to propagate to worker thread
+            current_session_id = getattr(_thread_local, 'session_id', None)
+            # Priority: ToolCallRecord.timeout_seconds > Tool.timeout_seconds > GLOBAL_DEFAULT_TIMEOUT
+            effective_timeout = record.timeout_seconds if record.timeout_seconds > 0 else tool.get_effective_timeout()
             loop = asyncio.get_event_loop()
             try:
                 result = await asyncio.wait_for(
                     loop.run_in_executor(
                         self._executor,
-                        tool.execute,
-                        record.arguments
+                        self._execute_in_thread,
+                        tool, record.arguments, current_session_id
                     ),
                     timeout=effective_timeout
                 )
@@ -124,15 +147,27 @@ class ToolScheduler:
                 record.output_truncated = True
             
             record.mark_success(result)
+            
+            # DEBUG: Completed
+            logger.debug(
+                "[ToolScheduler] Completed | name=%s | call_id=%s | status=success | duration=%.0fms | output_length=%d | output_preview=\"%s\"",
+                record.tool_name, record.id, record.duration_ms,
+                len(result), truncate_for_log(result)
+            )
+            
             logger.info(
                 f"Tool {record.tool_name} completed in {record.duration_ms:.0f}ms"
             )
-            self._emit(AgentEvent.TOOL_SUCCEEDED, tool_name=record.tool_name, duration_ms=record.duration_ms)
+            # Note: TOOL_SUCCEEDED/TOOL_FAILED events are emitted by AgentLoop
+            # with enriched data payloads (arguments, result_preview, etc.)
             
         except Exception as e:
+            logger.error(
+                "[ToolScheduler] Failed | name=%s | call_id=%s | error=%s | duration=%.0fms",
+                record.tool_name, record.id, str(e), record.duration_ms or 0
+            )
             logger.exception(f"Tool execution failed: {e}")
             record.mark_error(str(e))
-            self._emit(AgentEvent.TOOL_FAILED, tool_name=record.tool_name, error=str(e))
         
         return record
 

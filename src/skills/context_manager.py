@@ -141,6 +141,11 @@ class SkillContextManager:
             logger.info(f"[SkillCtx] Workspace created at {workspace_path}")
 
         logger.info(f"[SkillCtx] Skill '{skill_name}' activated with goal: {goal[:80]}")
+        logger.debug(
+            "[SkillContext] Activated | name=%s | goal=%s | workspace=%s",
+            skill_name, goal[:200] if goal else 'N/A',
+            self._runtime.workspace_dir or 'N/A'
+        )
         return True
 
     def deactivate_skill(self) -> None:

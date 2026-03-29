@@ -3,6 +3,7 @@
 import sqlite3
 import json
 import logging
+import time
 from pathlib import Path
 from typing import List, Optional
 from datetime import datetime
@@ -70,6 +71,7 @@ class MemoryStore:
     # Episodic operations
     def store_episodic(self, memory: EpisodicMemory) -> EpisodicMemory:
         """Store an episodic memory."""
+        start = time.time()
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
                 """INSERT INTO episodic_memory 
@@ -84,6 +86,11 @@ class MemoryStore:
                 )
             )
             conn.commit()
+        duration_ms = (time.time() - start) * 1000
+        logger.debug(
+            "[MemoryStore] SQL | operation=INSERT | table=episodic_memory | affected_rows=1 | duration=%.1fms",
+            duration_ms
+        )
         return memory
     
     def get_episodic(self, memory_id: str) -> Optional[EpisodicMemory]:
@@ -158,6 +165,7 @@ class MemoryStore:
     # Semantic operations
     def store_semantic(self, memory: SemanticMemory) -> SemanticMemory:
         """Store or update semantic memory."""
+        start = time.time()
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
                 """INSERT INTO semantic_memory 
@@ -177,6 +185,11 @@ class MemoryStore:
                 )
             )
             conn.commit()
+        duration_ms = (time.time() - start) * 1000
+        logger.debug(
+            "[MemoryStore] SQL | operation=UPSERT | table=semantic_memory | affected_rows=1 | duration=%.1fms",
+            duration_ms
+        )
         return memory
     
     def get_semantic(self, key: str) -> Optional[SemanticMemory]:

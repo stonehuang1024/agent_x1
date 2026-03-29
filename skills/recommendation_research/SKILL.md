@@ -55,10 +55,12 @@ This skill guides the agent through a structured research workflow for recommend
 
 ## Workspace structure
 
-All artifacts are stored under the session research directory:
+**IMPORTANT**: The system automatically creates a workspace directory when this skill is activated. The workspace path is provided in the **Active Skill Runtime** section of the system prompt as `**Workspace:**`. You MUST use this path for ALL file operations — do NOT create your own directories outside of it.
+
+All artifacts MUST be stored under the system-managed workspace directory:
 
 ```
-{session_dir}/research/recommendation_research/
+{workspace}/                    # System-managed, shown in runtime as **Workspace:**
 ├── papers/          # Downloaded PDFs and parsed markdown
 ├── notes/           # Research notes, summaries, insights
 ├── datasets/        # Downloaded and preprocessed datasets
@@ -73,25 +75,31 @@ All artifacts are stored under the session research directory:
 ├── tests/           # Unit tests for models and data pipeline
 ├── runs/            # Experiment logs, TensorBoard logs
 ├── reports/         # Final comparison reports
-└── artifacts/       # Saved model checkpoints, plots
+├── artifacts/       # Saved model checkpoints, plots
 ├── logs/            # training and testing logs, log file format: for train_{date_time}.log
-└── README.md /       # overall the project in detail
+└── README.md        # overall the project in detail
 ```
+
+**Rules for file paths:**
+- All downloaded files (papers, datasets, etc.) MUST be saved inside `{workspace}/` subdirectories
+- NEVER download files to the project root (e.g. `./paper.pdf`) — always use `{workspace}/papers/paper.pdf`
+- NEVER create directories outside the workspace (e.g. `results/session/my_custom_dir/`)
+- Use the workspace path exactly as shown in the runtime context
 
 ## Workflow
 
 ### Phase 1: Environment Setup
 
-1. Create the workspace directory structure listed above
+1. The workspace directory is already created by the system — check the **Workspace** path in the runtime context. Create any additional sub-directories you need inside it (e.g. `src/models/`, `src/data/`)
 2. Verify Python environment has required packages: `torch`, `pandas`, `numpy`, `scikit-learn`
-3. If missing, create a `requirements.txt` and install dependencies
+3. If missing, create a `requirements.txt` inside the workspace and install dependencies
 
 ### Phase 2: Paper Discovery & Retrieval
 
 1. Search arXiv for the target paper using `search_arxiv` tool
-2. Download the PDF using `download_arxiv_pdf` tool into `papers/`
+2. Download the PDF using `download_file` tool into `{workspace}/papers/` (use the full absolute workspace path)
 3. Convert PDF to markdown using `convert_pdf_to_markdown` tool
-4. Save parsed markdown to `papers/{paper_id}.md`
+4. Save parsed markdown to `{workspace}/papers/{paper_id}.md`
 5. Extract key information:
    - Model architecture description
    - Loss function
@@ -296,7 +304,8 @@ Tool categories preferred:
 - Unit tests must pass before full training
 - Use PyTorch as the primary framework
 - Keep training time reasonable (< 30 minutes on CPU for small datasets)
-- All paths should be relative to the workspace directory
+- All paths MUST be under the system-managed workspace directory (shown in runtime context as **Workspace:**)
+- NEVER save files outside the workspace directory (no downloads to project root, no custom session directories)
 - training and testing should be full logs, and add auc and loss mark per 50 batchs, and draw training picture png show the auc and loss trends.
 
 ## Success criteria

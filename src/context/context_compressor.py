@@ -106,6 +106,13 @@ class ContextCompressor:
         if not messages:
             return [], None
 
+        # DEBUG: Compressing
+        input_tokens = self.token_estimator(messages)
+        logger.debug(
+            "[ContextCompressor] Compressing | input_messages=%d | input_tokens=%d | target_tokens=%s",
+            len(messages), input_tokens, target_tokens
+        )
+
         # Short conversations don't need compression
         if target_tokens is None and len(messages) <= self.summary_threshold:
             return messages, None
@@ -143,6 +150,15 @@ class ContextCompressor:
         summary = self._generate_structured_summary(old_msgs)
         summary_msg = Message.system(f"[Conversation Summary]\n{summary}")
         result = system_msgs + [summary_msg] + recent_msgs
+
+        # DEBUG: Compressed
+        output_tokens = self.token_estimator(result)
+        compression_ratio = (output_tokens / max(input_tokens, 1)) * 100
+        logger.debug(
+            "[ContextCompressor] Compressed | output_messages=%d | output_tokens=%d | compression_ratio=%.1f%%",
+            len(result), output_tokens, compression_ratio
+        )
+
         return result, summary
 
     def truncate_for_emergency(

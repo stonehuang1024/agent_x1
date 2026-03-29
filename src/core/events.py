@@ -24,6 +24,14 @@ class AgentEvent(Enum):
     SESSION_ARCHIVED = auto()
     SESSION_FORKED = auto()
     
+    # Token budget events
+    TOKEN_BUDGET_WARNING = auto()
+    SESSION_COMPACTING = auto()
+    
+    # Sub-agent events (reserved for future multi-agent support)
+    SUBAGENT_SESSION_CREATED = auto()
+    SUBAGENT_SESSION_COMPLETED = auto()
+    
     # Turn events
     TURN_STARTED = auto()
     TURN_COMPLETED = auto()
@@ -97,7 +105,10 @@ class EventBus:
         if event_type not in self._handlers:
             self._handlers[event_type] = []
         self._handlers[event_type].append(handler)
-        logger.debug(f"Handler subscribed to {event_type.name}")
+        logger.debug(
+            "[EventBus] Subscribe | event=%s | handler=%s",
+            event_type.name, getattr(handler, '__name__', str(handler))
+        )
     
     def subscribe_all(self, handler: EventHandler) -> None:
         """Subscribe to all events."""
@@ -146,13 +157,23 @@ class EventBus:
             data=kwargs
         )
         
+        # DEBUG: Emit
+        subscriber_count = len(self._handlers.get(event_type, [])) + len(self._global_handlers)
+        logger.debug(
+            "[EventBus] Emit | event=%s | subscriber_count=%d | payload_keys=%s",
+            event_type.name, subscriber_count, list(kwargs.keys())
+        )
+        
         # Notify specific handlers
         handlers = self._handlers.get(event_type, [])
         for handler in handlers:
             try:
                 handler(payload)
             except Exception as e:
-                logger.error(f"Event handler error for {event_type.name}: {e}")
+                logger.error(
+                    "[EventBus] Handler error | event=%s | handler=%s | error=%s",
+                    event_type.name, getattr(handler, '__name__', str(handler)), str(e)
+                )
         
         # Notify global handlers
         for handler in self._global_handlers:

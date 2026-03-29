@@ -6,6 +6,7 @@ from datetime import datetime
 
 from .models import EpisodicMemory, SemanticMemory, EpisodicType, SemanticCategory
 from .memory_store import MemoryStore
+from src.util.logger import truncate_for_log
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +26,10 @@ class MemoryController:
             session_id=session_id, type=EpisodicType.DECISION,
             content=decision, importance=importance, turn_number=turn_number
         )
+        logger.debug(
+            "[Memory] Episodic stored | session_id=%s | type=%s | importance=%.2f | content_preview=\"%s\"",
+            session_id[:8] if session_id else 'N/A', 'decision', importance, truncate_for_log(decision)
+        )
         return self.store.store_episodic(memory)
     
     def record_action(
@@ -34,6 +39,10 @@ class MemoryController:
         memory = EpisodicMemory(
             session_id=session_id, type=EpisodicType.ACTION,
             content=action, importance=importance, turn_number=turn_number
+        )
+        logger.debug(
+            "[Memory] Episodic stored | session_id=%s | type=%s | importance=%.2f | content_preview=\"%s\"",
+            session_id[:8] if session_id else 'N/A', 'action', importance, truncate_for_log(action)
         )
         return self.store.store_episodic(memory)
     
@@ -77,6 +86,10 @@ class MemoryController:
             key=key, value=value,
             confidence=confidence, source_session=source_session
         )
+        logger.debug(
+            "[Memory] Semantic stored | category=%s | key=%s | confidence=%.2f | value_preview=\"%s\"",
+            'preference', key, confidence, truncate_for_log(value)
+        )
         return self.store.store_semantic(memory)
     
     def store_convention(
@@ -87,6 +100,10 @@ class MemoryController:
             category=SemanticCategory.CONVENTION,
             key=key, value=value,
             confidence=confidence, source_session=source_session
+        )
+        logger.debug(
+            "[Memory] Semantic stored | category=%s | key=%s | confidence=%.2f | value_preview=\"%s\"",
+            'convention', key, confidence, truncate_for_log(value)
         )
         return self.store.store_semantic(memory)
     
@@ -120,7 +137,17 @@ class MemoryController:
                 results.append(wrapper)
         
         results.sort(key=lambda m: m.importance, reverse=True)
-        return results[:top_k]
+        final = results[:top_k]
+        
+        # DEBUG: Retrieved
+        top_importance = final[0].importance if final else 0.0
+        logger.debug(
+            "[Memory] Retrieved | query=\"%s\" | results=%d | types=[episodic%s] | top_importance=%.2f",
+            truncate_for_log(query, 100), len(final),
+            ',semantic' if include_semantic else '', top_importance
+        )
+        
+        return final
     
     def get_preferences(self) -> List[SemanticMemory]:
         return self.store.search_semantic(category=SemanticCategory.PREFERENCE)
@@ -140,7 +167,10 @@ class MemoryController:
                 deleted += 1
         
         if deleted:
-            logger.info(f"Cleaned up {deleted} expired memories")
+            logger.info(
+                "[Memory] Cleanup | expired_count=%d | remaining_count=%d | threshold=%.3f",
+                deleted, len(old_memories) - deleted, threshold
+            )
         return deleted
     
     def summarize_session(self, session_id: str) -> str:

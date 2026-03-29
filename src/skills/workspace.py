@@ -32,7 +32,7 @@ class SkillWorkspaceManager:
     Manages the workspace directory for a skill within a session.
 
     The workspace lives at:
-        {session_dir}/research/{skill_name}/
+        {session_dir}/output_{skill_name}/
 
     Provides helpers to create standard sub-directories, track paths,
     and return workspace info for prompt injection.
@@ -46,7 +46,7 @@ class SkillWorkspaceManager:
         """
         self._session_dir = Path(session_dir)
         self._skill_name = skill_name
-        self._workspace_dir = self._session_dir / "research" / skill_name
+        self._workspace_dir = self._session_dir / f"output_{skill_name}"
         self._initialized = False
 
     @property

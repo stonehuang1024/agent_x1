@@ -18,6 +18,7 @@ from typing import Dict, List, Any, Optional
 from .base import BaseEngine, EngineConfig, ProviderType
 from ..core.models import Message, Role
 from ..core.tool import Tool
+from ..util.logger import truncate_for_log, mask_sensitive
 
 logger = logging.getLogger(__name__)
 
@@ -175,14 +176,34 @@ class KimiEngine(BaseEngine):
             payload["tools"] = tools_schemas
             payload["tool_choice"] = "auto"
         
+        # DEBUG: API request built
+        logger.debug(
+            "[Engine] API request built | url=%s/chat/completions | model=%s | max_tokens=%d | temperature=%s | message_count=%d | tool_count=%d | system_prompt_length=%d",
+            self.config.base_url, self.config.model, self.config.max_tokens,
+            self.config.temperature, len(all_messages), len(tools_schemas),
+            len(sys_prompt) if sys_prompt else 0
+        )
+        
         logger.info(f"[KimiEngine.call_llm] {len(all_messages)} messages, {len(tools_schemas)} tools")
         
         try:
+            # DEBUG: Sending request
+            payload_size = len(json.dumps(payload))
+            logger.debug("[Engine] Sending request | payload_size=%d bytes", payload_size)
+            
+            call_start = time.time()
             response = requests.post(
                 f"{self.config.base_url}/chat/completions",
                 headers=headers,
                 json=payload,
                 timeout=self.config.timeout
+            )
+            call_duration = time.time() - call_start
+            
+            # DEBUG: API response
+            logger.debug(
+                "[Engine] API response | status=%d | response_size=%d bytes | duration=%.2fs",
+                response.status_code, len(response.content), call_duration
             )
             response.raise_for_status()
             
@@ -192,6 +213,16 @@ class KimiEngine(BaseEngine):
             choice = resp_json.get("choices", [{}])[0]
             message = choice.get("message", {})
             usage = resp_json.get("usage", {})
+            
+            # DEBUG: Response parsed
+            logger.debug(
+                "[Engine] Response parsed | content_length=%d | tool_calls=%d | usage={input:%d, output:%d, total:%d} | finish_reason=%s",
+                len(message.get('content', '') or ''),
+                len(message.get('tool_calls', []) or []),
+                usage.get('prompt_tokens', 0), usage.get('completion_tokens', 0),
+                usage.get('total_tokens', 0),
+                choice.get('finish_reason', 'unknown')
+            )
             
             return {
                 "content": message.get("content"),
@@ -278,6 +309,12 @@ class KimiEngine(BaseEngine):
             
             logger.info(f"[KimiEngine] Tool {i}/{len(tool_calls)}: {tool_name}({arguments})")
             
+            # DEBUG: Tool executing
+            logger.debug(
+                "[Engine] Tool executing | name=%s | arguments_preview=\"%s\"",
+                tool_name, truncate_for_log(arguments)
+            )
+            
             start_time = time.time()
             if tool_name in self.tools:
                 tool = self.tools[tool_name]
@@ -294,6 +331,12 @@ class KimiEngine(BaseEngine):
 
             elapsed = time.time() - start_time
             logger.info(f"[KimiEngine] Tool {i} '{tool_name}' completed in {elapsed:.1f}s")
+            
+            # DEBUG: Tool completed
+            logger.debug(
+                "[Engine] Tool completed | name=%s | duration=%.2fs | output_length=%d | output_preview=\"%s\"",
+                tool_name, elapsed, len(output), truncate_for_log(output)
+            )
 
             # Engine-layer output truncation safety net
             if len(output) > ENGINE_MAX_OUTPUT:

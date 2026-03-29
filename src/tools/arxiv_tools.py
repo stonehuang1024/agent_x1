@@ -22,7 +22,7 @@ from ..util.logger import get_logger
 logger = get_logger(__name__)
 
 # arXiv API endpoint
-ARXIV_API_URL = "http://export.arxiv.org/api/query"
+ARXIV_API_URL = "https://export.arxiv.org/api/query"
 ARXIV_PDF_URL = "https://arxiv.org/pdf"
 
 # Retry configuration
@@ -188,7 +188,8 @@ def _parse_atom_entry(entry_elem: ET.Element) -> Dict[str, Any]:
     id_elem = entry_elem.find('atom:id', NAMESPACES)
     if id_elem is not None and id_elem.text:
         # Extract ID from URL like http://arxiv.org/abs/2401.12345
-        match = re.search(r'arxiv\.org/abs/(\d+\.\d+)', id_elem.text)
+        # or old format like http://arxiv.org/abs/quant-ph/0102001
+        match = re.search(r'arxiv\.org/abs/(.+)$', id_elem.text)
         if match:
             paper['id'] = match.group(1)
         else:

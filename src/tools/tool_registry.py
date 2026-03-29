@@ -5,7 +5,10 @@ Enables LLMs to discover, search, and understand the full tool ecosystem.
 """
 
 from typing import Dict, List, Any, Optional
+import logging
 from ..core.tool import Tool
+
+logger = logging.getLogger(__name__)
 
 
 TOOL_CATEGORIES: Dict[str, Dict[str, Any]] = {
@@ -106,6 +109,11 @@ class CategorizedToolRegistry:
             raise ValueError(f"Unknown category '{category}'. Valid: {list(TOOL_CATEGORIES.keys())}")
         self._tools[tool.name] = tool
         self._tool_categories[tool.name] = category
+        logger.debug(
+            "[ToolRegistry] Registered | name=%s | description_preview=\"%s\" | param_count=%d",
+            tool.name, (tool.description or '')[:100],
+            len(tool.parameters.get('properties', {})) if isinstance(getattr(tool, 'parameters', None), dict) else 0
+        )
 
     def register_many(self, tools: List[Tool], category: str) -> None:
         """Register a list of tools under the same category."""
@@ -114,7 +122,9 @@ class CategorizedToolRegistry:
 
     def get(self, name: str) -> Optional[Tool]:
         """Get a tool by name."""
-        return self._tools.get(name)
+        tool = self._tools.get(name)
+        logger.debug("[ToolRegistry] Lookup | name=%s | found=%s", name, tool is not None)
+        return tool
 
     def get_category(self, name: str) -> Optional[str]:
         """Get the category of a tool by name."""

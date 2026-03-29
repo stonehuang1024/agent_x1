@@ -45,7 +45,10 @@ class LoopDetector:
         if repetitions >= self.max_repetitions:
             self._warning_count += 1
             warning = self._get_warning()
-            logger.warning(f"Loop detected! Repetitions={repetitions}")
+            logger.warning(
+                "[LoopDetector] Loop detected | pattern=tool_repetition | count=%d | threshold=%d",
+                repetitions, self.max_repetitions
+            )
             return True, warning
         
         if repetitions == 0:

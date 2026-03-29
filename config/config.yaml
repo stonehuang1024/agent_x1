@@ -67,6 +67,8 @@ paths:
   result_dir: "results"
   data_dir: "data"
   temp_dir: "tmp"
+  session_dir: ""          # Session output directory (default: {result_dir}/session)
+  memory_data_dir: ""      # Memory/history data directory (default: {result_dir}/memory_data)
 
 # Logging
-log_level: "INFO"
+log_level: "DEBUG"

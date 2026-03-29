@@ -6,13 +6,13 @@ import os
 import sys
 import logging
 
+import pytest
+
 sys.path.insert(0, str(__file__).rsplit('/', 3)[0])
 
-from src.engine.anthropic_engine import create_anthropic_engine
+from src.engine import create_anthropic_engine
 from src.tools import (
-    WEATHER_TOOL,
     CALCULATOR_TOOL,
-    TIME_TOOL,
     GET_STOCK_KLINE_TOOL,
     GET_STOCK_SNAPSHOT_TOOL,
     GET_STOCK_FINANCIALS_TOOL,
@@ -20,6 +20,12 @@ from src.tools import (
     ANALYZE_STOCK_TOOL,
     EXA_SEARCH_TOOL,
 )
+
+# This module requires a valid Kimi API key and network access
+pytestmark = [
+    pytest.mark.timeout(30),
+    pytest.mark.network,
+]
 
 logging.basicConfig(
     level=logging.INFO,
@@ -50,9 +56,7 @@ def main():
         )
         
         # Register tools
-        engine.register_tool(WEATHER_TOOL)
         engine.register_tool(CALCULATOR_TOOL)
-        engine.register_tool(TIME_TOOL)
         engine.register_tool(GET_STOCK_KLINE_TOOL)
         engine.register_tool(GET_STOCK_SNAPSHOT_TOOL)
         engine.register_tool(GET_STOCK_FINANCIALS_TOOL)

@@ -545,6 +545,10 @@ class TestPPTTools(unittest.TestCase):
     """Tests for ppt_tools.py."""
 
     def setUp(self):
+        try:
+            import pptx  # noqa: F401
+        except ImportError:
+            self.skipTest("python-pptx not installed")
         self.tmp = tempfile.mkdtemp()
 
     def tearDown(self):
@@ -810,18 +814,6 @@ class TestExistingToolsBackwardsCompatibility(unittest.TestCase):
         from src.tools import CALCULATOR_TOOL
         result = json.loads(CALCULATOR_TOOL.execute('{"expression": "3 * 7"}'))
         self.assertEqual(result["result"], 21)
-
-    def test_time_tool(self):
-        from src.tools import TIME_TOOL
-        result = json.loads(TIME_TOOL.execute('{}'))
-        self.assertIn("datetime", result)
-        self.assertIn("weekday", result)
-
-    def test_weather_tool(self):
-        from src.tools import WEATHER_TOOL
-        result = json.loads(WEATHER_TOOL.execute('{"location": "Beijing"}'))
-        self.assertIn("temperature", result)
-        self.assertIn("condition", result)
 
     def test_all_tools_count(self):
         from src.tools import ALL_TOOLS

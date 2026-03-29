@@ -46,24 +46,57 @@ class PromptProvider:
         """
         context = context or PromptContext()
         result = []
+        section_names = []
         
-        result.append(sections.render_preamble(context))
-        result.append(sections.render_mandates(context))
-        result.append(sections.render_tools(context))
+        preamble = sections.render_preamble(context)
+        result.append(preamble)
+        section_names.append(("preamble", len(preamble)))
+        
+        mandates = sections.render_mandates(context)
+        result.append(mandates)
+        section_names.append(("mandates", len(mandates)))
+        
+        tools_section = sections.render_tools(context)
+        result.append(tools_section)
+        section_names.append(("tools", len(tools_section)))
         
         if context.skills and not context.active_skill:
-            result.append(sections.render_skills_catalog(context))
+            catalog = sections.render_skills_catalog(context)
+            result.append(catalog)
+            section_names.append(("skills_catalog", len(catalog)))
         
         if context.active_skill:
-            result.append(sections.render_active_skill(context))
+            active = sections.render_active_skill(context)
+            result.append(active)
+            section_names.append(("active_skill", len(active)))
         
         if context.project_memory:
-            result.append(sections.render_project_context(context))
+            proj = sections.render_project_context(context)
+            result.append(proj)
+            section_names.append(("project_context", len(proj)))
         
         if context.is_recovery:
-            result.append(sections.render_error_recovery(context))
+            recovery = sections.render_error_recovery(context)
+            result.append(recovery)
+            section_names.append(("error_recovery", len(recovery)))
         
-        result.append(sections.render_guidelines(context))
+        guidelines = sections.render_guidelines(context)
+        result.append(guidelines)
+        section_names.append(("guidelines", len(guidelines)))
         
         non_empty = [s for s in result if s.strip()]
-        return "\n\n---\n\n".join(non_empty)
+        final = "\n\n---\n\n".join(non_empty)
+        
+        # DEBUG: Building system prompt
+        logger.debug(
+            "[PromptProvider] Building system prompt | sections=%d | total_length=%d",
+            len(section_names), len(final)
+        )
+        for name, length in section_names:
+            if length > 0:
+                logger.debug(
+                    "[PromptProvider] Section added | name=%s | length=%d",
+                    name, length
+                )
+        
+        return final

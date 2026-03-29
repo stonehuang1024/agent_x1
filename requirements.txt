@@ -12,9 +12,6 @@ typing-extensions>=4.8.0
 # Data validation
 jsonschema>=4.19.0
 
-# Logging
-loguru>=0.7.0
-
 # Stock data and analysis
 yfinance>=0.2.36
 pandas>=2.0.0

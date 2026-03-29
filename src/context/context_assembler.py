@@ -103,6 +103,15 @@ class ContextAssembler:
 
         layers = self._build_layers(user_input, skill_context)
 
+        # DEBUG: Build started
+        session_id = 'N/A'
+        if self.session_manager.active_session:
+            session_id = self.session_manager.active_session.id[:8]
+        logger.debug(
+            "[ContextAssembler] Build started | session_id=%s | user_input_length=%d | budget_total=%d | budget_available=%d",
+            session_id, len(user_input), self.window.budget.max_tokens, self.window.budget.available_for_context
+        )
+
         # Track per-layer token usage for the event payload
         layer_tokens: Dict[str, int] = {}
         result: List[Message] = []
@@ -131,12 +140,23 @@ class ContextAssembler:
                         f"(needs ~{self.window.estimate_tokens(layer.messages)} tokens, "
                         f"remaining: {self.window.remaining()})"
                     )
+                    # DEBUG: Layer evicted
+                    logger.debug(
+                        "[ContextAssembler] Layer evicted | name=%s | priority=%d | token_count=%d | reason=budget_exceeded",
+                        layer.name, layer.priority, self.window.estimate_tokens(layer.messages)
+                    )
                     continue
 
             tokens_before = self.window._current_usage
             self.window.add(layer.messages)
             tokens_used = self.window._current_usage - tokens_before
             layer_tokens[layer.name] = tokens_used
+
+            # DEBUG: Layer added
+            logger.debug(
+                "[ContextAssembler] Layer added | name=%s | priority=%d | token_count=%d | required=%s | cumulative_tokens=%d",
+                layer.name, layer.priority, tokens_used, layer.required, self.window._current_usage
+            )
 
             # Apply cache_control to static (cacheable) layers
             if layer.cacheable:
@@ -160,6 +180,13 @@ class ContextAssembler:
 
         # Emit CONTEXT_ASSEMBLED event
         self._emit_assembled_event(result, layer_tokens)
+
+        # DEBUG: Build complete
+        logger.debug(
+            "[ContextAssembler] Build complete | total_layers=%d | total_tokens=%d | budget_utilization=%.1f%% | message_count=%d",
+            len(layer_tokens), self.window._current_usage,
+            self.window.utilization() * 100, len(result)
+        )
 
         # Compress if utilization is critical
         if self.window.should_compress():
@@ -518,7 +545,18 @@ class ContextAssembler:
     # ------------------------------------------------------------------
 
     def _load_history(self) -> List[Message]:
-        """Load recent conversation history from session manager."""
+        """Load recent conversation history from session manager.
+
+        Converts ``Turn`` objects (from the session store) back into
+        ``Message`` objects, preserving all fields required by the LLM
+        API format:
+
+        - **assistant + tool_calls**: ``tool_calls`` must be present so
+          the engine can emit ``tool_use`` blocks.
+        - **tool**: ``tool_call_id`` and ``name`` must be present so the
+          engine can emit ``tool_result`` blocks with the correct
+          ``tool_use_id``.
+        """
         try:
             session = self.session_manager.active_session
             if not session:
@@ -532,6 +570,15 @@ class ContextAssembler:
                         role=Role.ASSISTANT.value,
                         content=turn.content,
                         tool_calls=turn.tool_calls,
+                    ))
+                elif turn.role == "tool":
+                    # Preserve tool_call_id and name — required by
+                    # Anthropic API for tool_result blocks.
+                    messages.append(Message(
+                        role=Role.TOOL.value,
+                        content=turn.content,
+                        tool_call_id=turn.tool_call_id,
+                        name=getattr(turn, 'name', None),
                     ))
                 else:
                     role_value = (

@@ -248,6 +248,11 @@ def load_skill_spec(skill_dir: str) -> SkillSpec:
     tool_policy = _parse_tool_policy(sections)
 
     logger.info(f"[SkillLoader] Loaded skill '{metadata.name}' from {skill_dir}")
+    logger.debug(
+        "[SkillLoader] Loaded | name=%s | path=%s | tools=%d | prompt_length=%d",
+        metadata.name, skill_dir,
+        len(tool_policy.preferred_tools), len(raw_markdown)
+    )
 
     return SkillSpec(
         metadata=metadata,

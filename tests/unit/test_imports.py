@@ -36,7 +36,7 @@ def test_tools_imports():
     print("Testing tools imports...")
     from src.tools import Tool
     from src.tools import ALL_TOOLS
-    from src.tools import WEATHER_TOOL, CALCULATOR_TOOL, TIME_TOOL, SEARCH_TOOL
+    from src.tools import CALCULATOR_TOOL, SEARCH_TOOL
     from src.tools import GOOGLE_SEARCH_TOOL, EXA_SEARCH_TOOL
     from src.tools import (
         GET_STOCK_KLINE_TOOL, GET_STOCK_SNAPSHOT_TOOL,

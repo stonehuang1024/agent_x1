@@ -1,5 +1,4 @@
-"""
-Stock analysis tools for Agent X1.
+"""Stock analysis tools for Agent X1.
 
 Provides technical analysis capabilities including:
 - Technical indicators: SMA, EMA, RSI, MACD, Bollinger Bands, ATR, Stochastic, OBV
@@ -7,28 +6,50 @@ Provides technical analysis capabilities including:
 - Signal generation (buy/sell signals)
 - Automatic plot saving to timestamped directories
 """
-
+from __future__ import annotations  # Defer type annotation evaluation
 import os
 import sys
 import json
 import logging
 from datetime import datetime
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional, Tuple, TYPE_CHECKING
 from pathlib import Path
-
-import yfinance as yf
-import pandas as pd
-import numpy as np
-import matplotlib
-matplotlib.use('Agg')  # Use non-interactive backend
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-from matplotlib.patches import Rectangle
 
 from ..core.tool import Tool
 from .stock_tools import get_result_directory
 
 logger = logging.getLogger(__name__)
+
+# Lazy-loaded heavy dependencies — these libraries consume hundreds of MB
+# of memory and should only be loaded when actually needed, not at import
+# time (which happens whenever any test imports from src.tools).
+_yf = None
+_pd = None
+_np = None
+_plt = None
+_mdates = None
+_Rectangle = None
+
+
+def _ensure_deps():
+    """Lazily import heavy dependencies on first use."""
+    global _yf, _pd, _np, _plt, _mdates, _Rectangle
+    if _pd is not None:
+        return
+    import yfinance as yf
+    import pandas as pd
+    import numpy as np
+    import matplotlib
+    matplotlib.use('Agg')  # Use non-interactive backend
+    import matplotlib.pyplot as plt
+    import matplotlib.dates as mdates
+    from matplotlib.patches import Rectangle
+    _yf = yf
+    _pd = pd
+    _np = np
+    _plt = plt
+    _mdates = mdates
+    _Rectangle = Rectangle
 
 
 def calculate_sma(data: pd.Series, period: int) -> pd.Series:
@@ -72,9 +93,9 @@ def calculate_bollinger_bands(data: pd.Series, period: int = 20, std_dev: int = 
 def calculate_atr(high: pd.Series, low: pd.Series, close: pd.Series, period: int = 14) -> pd.Series:
     """Calculate Average True Range."""
     high_low = high - low
-    high_close = np.abs(high - close.shift())
-    low_close = np.abs(low - close.shift())
-    ranges = pd.concat([high_low, high_close, low_close], axis=1)
+    high_close = _np.abs(high - close.shift())
+    low_close = _np.abs(low - close.shift())
+    ranges = _pd.concat([high_low, high_close, low_close], axis=1)
     true_range = ranges.max(axis=1)
     return true_range.rolling(window=period).mean()
 
@@ -90,7 +111,7 @@ def calculate_stochastic(high: pd.Series, low: pd.Series, close: pd.Series, k_pe
 
 def calculate_obv(close: pd.Series, volume: pd.Series) -> pd.Series:
     """Calculate On-Balance Volume."""
-    obv = pd.Series(index=close.index, dtype=float)
+    obv = _pd.Series(index=close.index, dtype=float)
     obv.iloc[0] = volume.iloc[0]
     for i in range(1, len(close)):
         if close.iloc[i] > close.iloc[i-1]:
@@ -113,7 +134,7 @@ def add_all_indicators(df: pd.DataFrame) -> pd.DataFrame:
     close = df['Close']
     high = df['High'] if 'High' in df.columns else close
     low = df['Low'] if 'Low' in df.columns else close
-    volume = df['Volume'] if 'Volume' in df.columns else pd.Series(1, index=df.index)
+    volume = df['Volume'] if 'Volume' in df.columns else _pd.Series(1, index=df.index)
     
     # Moving Averages
     df['SMA_5'] = calculate_sma(close, 5)
@@ -150,7 +171,7 @@ def add_all_indicators(df: pd.DataFrame) -> pd.DataFrame:
     df['Price_Change_Abs'] = close.diff()
     
     # Volatility (20-day rolling std)
-    df['Volatility'] = df['Price_Change'].rolling(window=20).std() * np.sqrt(252)
+    df['Volatility'] = df['Price_Change'].rolling(window=20).std() * _np.sqrt(252)
     
     logger.info(f"[StockAnalysis] Added {len([c for c in df.columns if c not in ['Open', 'High', 'Low', 'Close', 'Volume']])} indicators")
     
@@ -210,10 +231,10 @@ def plot_stock_analysis(
     """
     # Prepare data
     if 'Date' in df.columns:
-        df['Date'] = pd.to_datetime(df['Date'])
+        df['Date'] = _pd.to_datetime(df['Date'])
         dates = df['Date']
     elif 'Datetime' in df.columns:
-        df['Datetime'] = pd.to_datetime(df['Datetime'])
+        df['Datetime'] = _pd.to_datetime(df['Datetime'])
         dates = df['Datetime']
     else:
         dates = df.index
@@ -227,7 +248,7 @@ def plot_stock_analysis(
     if 'Stoch_K' in df.columns:
         num_plots += 1
     
-    fig, axes = plt.subplots(num_plots, 1, figsize=(14, 4 * num_plots), sharex=True)
+    fig, axes = _plt.subplots(num_plots, 1, figsize=(14, 4 * num_plots), sharex=True)
     if num_plots == 1:
         axes = [axes]
     
@@ -324,17 +345,17 @@ def plot_stock_analysis(
     
     # Format x-axis
     if plot_idx > 0:
-        axes[-1].xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-        axes[-1].xaxis.set_major_locator(mdates.AutoDateLocator())
-        plt.xticks(rotation=45)
+        axes[-1].xaxis.set_major_formatter(_mdates.DateFormatter('%Y-%m-%d'))
+        axes[-1].xaxis.set_major_locator(_mdates.AutoDateLocator())
+        _plt.xticks(rotation=45)
     
-    plt.tight_layout()
+    _plt.tight_layout()
     
     # Save plot
     plot_filename = f"{symbol}_analysis.png"
     plot_path = result_dir / plot_filename
-    plt.savefig(plot_path, dpi=150, bbox_inches='tight', facecolor='white')
-    plt.close()
+    _plt.savefig(plot_path, dpi=150, bbox_inches='tight', facecolor='white')
+    _plt.close()
     
     logger.info(f"[StockAnalysis] Saved plot to {plot_path}")
     return str(plot_path)
@@ -365,9 +386,12 @@ def analyze_stock(
     symbol = symbol.upper().strip()
     logger.info(f"[StockAnalysis] Analyzing {symbol}, period={period}, interval={interval}")
     
+    # Load heavy dependencies on first actual use
+    _ensure_deps()
+    
     try:
         # Fetch data
-        ticker = yf.Ticker(symbol)
+        ticker = _yf.Ticker(symbol)
         df = ticker.history(period=period, interval=interval)
         
         if df.empty:
@@ -381,9 +405,9 @@ def analyze_stock(
         # Reset index to get Date as column
         df.reset_index(inplace=True)
         if 'Date' in df.columns:
-            df['Date'] = pd.to_datetime(df['Date'])
+            df['Date'] = _pd.to_datetime(df['Date'])
         elif 'Datetime' in df.columns:
-            df['Date'] = pd.to_datetime(df['Datetime'])
+            df['Date'] = _pd.to_datetime(df['Datetime'])
         
         # Add indicators
         df = add_all_indicators(df)

@@ -257,9 +257,13 @@ class TestToolExecution(unittest.TestCase):
         result = CONVERT_HTML_TO_MARKDOWN_TOOL.execute(
             '{"html": "<h1>Test</h1><p>Content</p>"}'
         )
-        parsed = json.loads(result)
-        self.assertTrue(parsed["success"])
-        self.assertIn("# Test", parsed["markdown"])
+        # Tool.execute() wraps result in json.dumps; reader funcs already return JSON strings,
+        # so we need to double-decode
+        decoded = json.loads(result)
+        if isinstance(decoded, str):
+            decoded = json.loads(decoded)
+        self.assertTrue(decoded["success"])
+        self.assertIn("# Test", decoded["markdown"])
 
     def test_file_tool_execution_with_txt(self):
         """Test executing file tool with text file."""
@@ -271,9 +275,11 @@ class TestToolExecution(unittest.TestCase):
             result = CONVERT_FILE_TO_MARKDOWN_TOOL.execute(
                 f'{{"file_path": "{temp_path}"}}'
             )
-            parsed = json.loads(result)
-            self.assertTrue(parsed["success"])
-            self.assertEqual(parsed["markdown"], "Tool test content")
+            decoded = json.loads(result)
+            if isinstance(decoded, str):
+                decoded = json.loads(decoded)
+            self.assertTrue(decoded["success"])
+            self.assertEqual(decoded["markdown"], "Tool test content")
         finally:
             os.unlink(temp_path)
 
@@ -282,8 +288,10 @@ class TestToolExecution(unittest.TestCase):
         result = CONVERT_HTML_TO_MARKDOWN_TOOL.execute(
             '{"html": "<p>Test</p>", "source": "test-source"}'
         )
-        parsed = json.loads(result)
-        self.assertTrue(parsed["success"])
+        decoded = json.loads(result)
+        if isinstance(decoded, str):
+            decoded = json.loads(decoded)
+        self.assertTrue(decoded["success"])
 
 
 def run_tests():

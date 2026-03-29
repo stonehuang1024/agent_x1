@@ -236,7 +236,10 @@ class ProjectMemoryLoader:
                 scope=scope,
                 metadata=metadata,
             )
-            logger.debug(f"Found project memory: {path} (scope={scope})")
+            logger.debug(
+                "[ProjectMemory] Loaded | path=%s | size=%d bytes | scope=%s",
+                str(path), stat.st_size, scope
+            )
             return mem
 
         except Exception as e:

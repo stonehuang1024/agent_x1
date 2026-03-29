@@ -80,18 +80,30 @@ class PathConfig:
     
     Attributes:
         log_dir: Directory for log files
-        result_dir: Directory for results
+        result_dir: Directory for results (base directory)
         data_dir: Directory for data files
         temp_dir: Directory for temporary files
+        session_dir: Directory for session outputs (default: {result_dir}/session)
+        memory_data_dir: Directory for memory/history data (default: {result_dir}/memory_data)
     """
     log_dir: str = "logs"
     result_dir: str = "results"
     data_dir: str = "data"
     temp_dir: str = "tmp"
+    session_dir: str = ""
+    memory_data_dir: str = ""
+    
+    def __post_init__(self):
+        """Set defaults for session_dir and memory_data_dir based on result_dir."""
+        if not self.session_dir:
+            self.session_dir = str(Path(self.result_dir) / "session")
+        if not self.memory_data_dir:
+            self.memory_data_dir = str(Path(self.result_dir) / "memory_data")
     
     def ensure_dirs(self) -> None:
         """Create all configured directories."""
-        for path_attr in [self.log_dir, self.result_dir, self.data_dir, self.temp_dir]:
+        for path_attr in [self.log_dir, self.result_dir, self.data_dir, self.temp_dir,
+                          self.session_dir, self.memory_data_dir]:
             Path(path_attr).mkdir(parents=True, exist_ok=True)
 
 
@@ -544,6 +556,8 @@ paths:
   result_dir: "results"
   data_dir: "data"
   temp_dir: "tmp"
+  session_dir: ""          # Session output directory (default: {result_dir}/session)
+  memory_data_dir: ""      # Memory/history data directory (default: {result_dir}/memory_data)
 
 # Logging
 log_level: "INFO"

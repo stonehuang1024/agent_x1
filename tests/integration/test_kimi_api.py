@@ -14,8 +14,16 @@ import logging
 import requests
 from typing import Dict, Any, Optional
 
+import pytest
+
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# All tests in this module require network access to Kimi API
+pytestmark = [
+    pytest.mark.timeout(30),
+    pytest.mark.network,
+]
 
 
 def test_direct_http_request():

@@ -493,6 +493,7 @@ class TestEngineSkillIntegration:
         class DummyEngine(BaseEngine):
             def register_tool(self, tool): pass
             def chat(self, user_input): return ""
+            def call_llm(self, messages, tools=None, system_prompt=None): return {}
             def _call_llm(self): return {}
             def _parse_response(self, response): return None
             def _execute_tools(self, tool_calls): return []
@@ -523,6 +524,7 @@ class TestEngineSkillIntegration:
         class DummyEngine(BaseEngine):
             def register_tool(self, tool): pass
             def chat(self, user_input): return ""
+            def call_llm(self, messages, tools=None, system_prompt=None): return {}
             def _call_llm(self): return {}
             def _parse_response(self, response): return None
             def _execute_tools(self, tool_calls): return []

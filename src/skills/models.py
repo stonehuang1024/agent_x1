@@ -128,8 +128,15 @@ class SkillRuntimeState:
             f"## Active Skill Runtime: {self.skill_name}",
             f"**Status:** {self.status.value}",
             f"**Goal:** {self.goal}" if self.goal else "",
-            f"**Workspace:** {self.workspace_dir}" if self.workspace_dir else "",
         ]
+        if self.workspace_dir:
+            lines.append(f"**Workspace:** `{self.workspace_dir}`")
+            lines.append("")
+            lines.append(
+                "> ⚠️ **ALL file outputs (downloads, code, data, reports, etc.) "
+                "MUST be saved inside this workspace directory.** "
+                "Do NOT create directories or save files outside of it."
+            )
         if self.current_phase:
             lines.append(f"**Current Phase:** {self.current_phase}")
         if self.constraints:

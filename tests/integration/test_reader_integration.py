@@ -10,6 +10,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+import pytest
+
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
@@ -24,6 +26,12 @@ from src.tools.reader_tools import (
     CONVERT_HTML_TO_MARKDOWN_TOOL,
     CONVERT_FILE_TO_MARKDOWN_TOOL,
 )
+
+# All tests in this module may require network access
+pytestmark = [
+    pytest.mark.timeout(30),
+    pytest.mark.network,
+]
 
 # Test PDF path from user request
 TEST_PDF_PATH = "/Users/simonwang/agent_x1/results/session/META_analysis_2026-03-15_12-03-26/META_Intelligence_Report.pdf"
@@ -244,17 +252,23 @@ def test_tool_execution_full():
     """Test full tool execution pipeline."""
     print("\n=== Testing Full Tool Execution Pipeline ===")
     
+    # Tool.execute() returns json.dumps(func_result).  When the underlying
+    # function already returns a JSON string, the result is double-encoded.
+    # Helper to unwrap:
+    def _parse_tool_result(raw: str) -> dict:
+        decoded = json.loads(raw)
+        if isinstance(decoded, str):
+            decoded = json.loads(decoded)
+        return decoded
+    
     # Test HTML tool
     print("\n1. Testing CONVERT_HTML_TO_MARKDOWN_TOOL...")
     html_tool_result = CONVERT_HTML_TO_MARKDOWN_TOOL.execute(
         '{"html": "<h1>Tool Test</h1><p>Content here.</p>"}'
     )
-    parsed = json.loads(html_tool_result)
-    if parsed["success"]:
-        print("   ✓ HTML tool execution successful")
-    else:
-        print(f"   ✗ HTML tool failed: {parsed.get('error')}")
-        return False
+    parsed = _parse_tool_result(html_tool_result)
+    assert parsed["success"], f"HTML tool failed: {parsed.get('error')}"
+    print("   ✓ HTML tool execution successful")
     
     # Test file tool with temp file
     print("\n2. Testing CONVERT_FILE_TO_MARKDOWN_TOOL...")
@@ -266,16 +280,11 @@ def test_tool_execution_full():
         file_tool_result = CONVERT_FILE_TO_MARKDOWN_TOOL.execute(
             f'{{"file_path": "{temp_path}"}}'
         )
-        parsed = json.loads(file_tool_result)
-        if parsed["success"]:
-            print("   ✓ File tool execution successful")
-        else:
-            print(f"   ✗ File tool failed: {parsed.get('error')}")
-            return False
+        parsed = _parse_tool_result(file_tool_result)
+        assert parsed["success"], f"File tool failed: {parsed.get('error')}"
+        print("   ✓ File tool execution successful")
     finally:
         os.unlink(temp_path)
-    
-    return True
 
 
 def test_url_various_sites():

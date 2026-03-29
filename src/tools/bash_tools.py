@@ -309,7 +309,7 @@ RUN_COMMAND_TOOL = Tool(
 
 RUN_PYTHON_SCRIPT_TOOL = Tool(
     name="run_python_script",
-    description="Execute a Python script file and return its output. Pass optional command-line args.",
+    description="Execute a Python script file and return its output. Pass optional command-line args. Supports long-running scripts up to 30 minutes.",
     parameters={
         "type": "object",
         "properties": {
@@ -320,33 +320,34 @@ RUN_PYTHON_SCRIPT_TOOL = Tool(
                 "description": "Command-line arguments"
             },
             "working_dir": {"type": "string", "description": "Working directory"},
-            "timeout": {"type": "integer", "description": "Timeout in seconds (default: 60)"}
+            "timeout": {"type": "integer", "description": "Timeout in seconds (default: 1800, max: 1800)"}
         },
         "required": ["script_path"]
     },
     func=run_python_script,
-    timeout_seconds=120,
-    max_output_chars=30000,
+    timeout_seconds=1800,
+    max_output_chars=50000,
 )
 
 RUN_BASH_SCRIPT_TOOL = Tool(
     name="run_bash_script",
     description=(
         "Execute an inline bash script (multi-line commands). "
-        "Useful for complex shell workflows. Returns stdout/stderr."
+        "Useful for complex shell workflows including training scripts. Returns stdout/stderr. "
+        "Supports long-running scripts up to 30 minutes."
     ),
     parameters={
         "type": "object",
         "properties": {
             "script_content": {"type": "string", "description": "Bash script content"},
             "working_dir": {"type": "string", "description": "Working directory"},
-            "timeout": {"type": "integer", "description": "Timeout in seconds (default: 60)"}
+            "timeout": {"type": "integer", "description": "Timeout in seconds (default: 60, max: 1800)"}
         },
         "required": ["script_content"]
     },
     func=run_bash_script,
-    timeout_seconds=120,
-    max_output_chars=30000,
+    timeout_seconds=1800,
+    max_output_chars=50000,
 )
 
 GET_SYSTEM_INFO_TOOL = Tool(

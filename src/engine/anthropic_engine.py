@@ -18,6 +18,7 @@ from .base import BaseEngine, EngineConfig, ProviderType
 from ..core.models import Message, Role
 from ..core.tool import Tool
 from ..core.session_manager import get_session_manager, SessionManager
+from ..util.logger import truncate_for_log, mask_sensitive
 
 logger = logging.getLogger(__name__)
 
@@ -314,64 +315,110 @@ class AnthropicEngine(BaseEngine):
         if anthropic_tools:
             payload["tools"] = anthropic_tools
         
+        # DEBUG: API request built
+        logger.debug(
+            "[Engine] API request built | url=%s | model=%s | max_tokens=%d | temperature=%s | message_count=%d | tool_count=%d | system_prompt_length=%d",
+            url, self.config.model, self.config.max_tokens, self.config.temperature,
+            len(anthropic_msgs), len(anthropic_tools), len(sys_prompt) if sys_prompt else 0
+        )
+        
         logger.info(f"[AnthropicEngine.call_llm] {len(anthropic_msgs)} messages, {len(anthropic_tools)} tools")
         
-        try:
-            response = requests.post(
-                url,
-                headers=headers,
-                json=payload,
-                timeout=self.config.timeout
+        # Retry configuration for handling transient connection issues
+        max_retries = 3
+        retry_count = 0
+        last_exception = None
+        
+        while retry_count < max_retries:
+            try:
+                # DEBUG: Sending request
+                payload_size = len(json.dumps(payload))
+                logger.debug("[Engine] Sending request | payload_size=%d bytes", payload_size)
+                
+                call_start = time.time()
+                response = requests.post(
+                    url,
+                    headers=headers,
+                    json=payload,
+                    timeout=self.config.timeout
+                )
+                call_duration = time.time() - call_start
+                
+                # DEBUG: API response
+                logger.debug(
+                    "[Engine] API response | status=%d | response_size=%d bytes | duration=%.2fs",
+                    response.status_code, len(response.content), call_duration
+                )
+                break  # Success, exit retry loop
+            except (requests.ConnectionError, requests.Timeout) as e:
+                retry_count += 1
+                last_exception = e
+                if retry_count < max_retries:
+                    wait_time = 2 ** retry_count  # Exponential backoff: 2, 4, 8 seconds
+                    logger.warning(
+                        "[Engine] Retrying request | attempt=%d/%d | wait=%ds | error=%s",
+                        retry_count, max_retries, wait_time, str(e)
+                    )
+                    time.sleep(wait_time)
+                else:
+                    logger.error(f"[AnthropicEngine.call_llm] All {max_retries} retries exhausted")
+                    raise last_exception
+        else:
+            # This shouldn't happen if logic is correct, but handle gracefully
+            raise last_exception or RuntimeError("Request failed without exception")
+        
+        # Process the response outside the retry loop
+        if response.status_code == 200:
+            resp_json = response.json()
+            
+            # Parse content blocks
+            content_blocks = resp_json.get("content", [])
+            text_content = ""
+            tool_calls = []
+            
+            for block in content_blocks:
+                if block.get("type") == "text":
+                    text_content += block.get("text", "")
+                elif block.get("type") == "tool_use":
+                    tool_calls.append({
+                        "id": block.get("id", ""),
+                        "type": "function",
+                        "function": {
+                            "name": block.get("name", ""),
+                            "arguments": json.dumps(block.get("input", {}))
+                        }
+                    })
+            
+            usage = resp_json.get("usage", {})
+            
+            # DEBUG: Response parsed
+            logger.debug(
+                "[Engine] Response parsed | content_length=%d | tool_calls=%d | usage={input:%d, output:%d, total:%d} | finish_reason=%s",
+                len(text_content), len(tool_calls),
+                usage.get('input_tokens', 0), usage.get('output_tokens', 0),
+                usage.get('input_tokens', 0) + usage.get('output_tokens', 0),
+                resp_json.get('stop_reason', 'unknown')
             )
             
-            if response.status_code == 200:
-                resp_json = response.json()
-                
-                # Parse content blocks
-                content_blocks = resp_json.get("content", [])
-                text_content = ""
-                tool_calls = []
-                
-                for block in content_blocks:
-                    if block.get("type") == "text":
-                        text_content += block.get("text", "")
-                    elif block.get("type") == "tool_use":
-                        tool_calls.append({
-                            "id": block.get("id", ""),
-                            "type": "function",
-                            "function": {
-                                "name": block.get("name", ""),
-                                "arguments": json.dumps(block.get("input", {}))
-                            }
-                        })
-                
-                usage = resp_json.get("usage", {})
-                
-                return {
-                    "content": text_content,
-                    "tool_calls": tool_calls if tool_calls else None,
-                    "usage": {
-                        "input_tokens": usage.get("input_tokens", 0),
-                        "output_tokens": usage.get("output_tokens", 0),
-                        "total_tokens": usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
-                    },
-                    "model": self.config.model,
-                    "finish_reason": resp_json.get("stop_reason", "unknown")
-                }
-            else:
-                logger.error(f"[AnthropicEngine.call_llm] API Error: {response.status_code}")
-                return {
-                    "content": f"API Error: {response.status_code}",
-                    "tool_calls": None,
-                    "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
-                    "model": self.config.model,
-                    "finish_reason": "error"
-                }
-                
-        except requests.RequestException as e:
-            logger.error(f"[AnthropicEngine.call_llm] Request failed: {e}")
             return {
-                "content": f"API Error: {str(e)}",
+                "content": text_content,
+                "tool_calls": tool_calls if tool_calls else None,
+                "usage": {
+                    "input_tokens": usage.get("input_tokens", 0),
+                    "output_tokens": usage.get("output_tokens", 0),
+                    "total_tokens": usage.get("input_tokens", 0) + usage.get("output_tokens", 0)
+                },
+                "model": self.config.model,
+                "finish_reason": resp_json.get("stop_reason", "unknown")
+            }
+        else:
+            error_body = response.text[:500] if response.text else "(empty)"
+            logger.error(
+                "[AnthropicEngine.call_llm] API Error: %d - %s",
+                response.status_code, error_body,
+            )
+            return {
+                "content": f"API Error: {response.status_code}",
                 "tool_calls": None,
                 "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0},
                 "model": self.config.model,
@@ -428,6 +475,13 @@ class AnthropicEngine(BaseEngine):
         
         if tools:
             payload["tools"] = tools
+        
+        # DEBUG: API request built (legacy chat path)
+        logger.debug(
+            "[Engine] API request built | url=%s | model=%s | max_tokens=%d | temperature=%s | message_count=%d | tool_count=%d",
+            url, self.config.model, self.config.max_tokens, self.config.temperature,
+            len(messages), len(tools)
+        )
         
         logger.info(f"[AnthropicEngine] API Request: {len(messages)} messages, {len(tools)} tools")
         
@@ -520,6 +574,12 @@ class AnthropicEngine(BaseEngine):
             
             logger.info(f"[AnthropicEngine] Tool {i}/{len(tool_calls)}: {tool_name}({arguments})")
             
+            # DEBUG: Tool executing
+            logger.debug(
+                "[Engine] Tool executing | name=%s | arguments_preview=\"%s\"",
+                tool_name, truncate_for_log(arguments)
+            )
+            
             start_time = time.time()
             if tool_name in self.tools:
                 tool = self.tools[tool_name]
@@ -535,6 +595,12 @@ class AnthropicEngine(BaseEngine):
 
             elapsed = time.time() - start_time
             logger.info(f"[AnthropicEngine] Tool {i} '{tool_name}' completed in {elapsed:.1f}s")
+            
+            # DEBUG: Tool completed
+            logger.debug(
+                "[Engine] Tool completed | name=%s | duration=%.2fs | output_length=%d | output_preview=\"%s\"",
+                tool_name, elapsed, len(output), truncate_for_log(output)
+            )
 
             # Engine-layer output truncation safety net
             if len(output) > ENGINE_MAX_OUTPUT:

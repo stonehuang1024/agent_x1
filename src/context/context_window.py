@@ -151,7 +151,15 @@ class ContextWindow:
     def fits(self, messages: List[Message]) -> bool:
         """Check if messages fit within remaining budget."""
         needed = self.estimate_tokens(messages)
-        return (self._current_usage + needed) <= self.budget.available_for_context
+        fits = (self._current_usage + needed) <= self.budget.available_for_context
+        # DEBUG: Budget check
+        logger.debug(
+            "[ContextWindow] Budget check | max=%d | used=%d | available=%d | needed=%d | fits=%s | should_compress=%s",
+            self.budget.available_for_context, self._current_usage,
+            self.budget.available_for_context - self._current_usage,
+            needed, fits, self.should_compress()
+        )
+        return fits
     
     def remaining(self) -> int:
         """Remaining token budget."""

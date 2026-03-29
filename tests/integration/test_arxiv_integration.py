@@ -8,7 +8,10 @@ import json
 import os
 import sys
 import tempfile
+import time
 from pathlib import Path
+
+import pytest
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -21,6 +24,21 @@ from src.tools.arxiv_tools import (
     GET_ARXIV_PAPER_DETAILS_TOOL,
     DOWNLOAD_ARXIV_PDF_TOOL,
 )
+
+# All tests in this module require network access and may be slow
+pytestmark = [
+    pytest.mark.timeout(45),
+    pytest.mark.network,
+]
+
+
+@pytest.fixture(autouse=True)
+def _arxiv_rate_limit_delay(monkeypatch):
+    """Add a delay between tests and reduce retries to avoid arXiv rate limiting."""
+    import src.tools.arxiv_tools as arxiv_mod
+    monkeypatch.setattr(arxiv_mod, "MAX_RETRIES", 1)  # Reduce retries in tests
+    yield
+    time.sleep(3)  # arXiv recommends >= 3s between requests
 
 
 def test_search_real_api():
@@ -201,6 +219,7 @@ def test_get_paper_details():
     return True
 
 
+@pytest.mark.timeout(60)  # PDF downloads may take longer
 def test_download_pdf():
     """Test downloading PDF."""
     print("\n=== Testing PDF Download ===")
@@ -248,6 +267,7 @@ def test_download_pdf():
             return False
 
 
+@pytest.mark.timeout(90)  # Multiple API calls + download
 def test_tool_execution():
     """Test tool execution via Tool objects."""
     print("\n=== Testing Tool Execution ===")

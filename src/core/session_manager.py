@@ -10,6 +10,7 @@ import time
 import json
 import atexit
 import signal
+import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -77,10 +78,18 @@ class SessionManager:
             session_name: Optional name for the session (auto-generated if None)
             base_results_dir: Base directory for results
             memory_data_dir: Directory for history tracking
+        
+        .. deprecated::
+            Use ``src.session.SessionManager`` instead.
         """
-        self.session_name = session_name or self._generate_session_name()
-        self.timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        self.session_dir_name = f"{self.session_name}_{self.timestamp}"
+        warnings.warn(
+            "src.core.session_manager.SessionManager is deprecated, "
+            "use src.session.SessionManager instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self.timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.session_dir_name = session_name or f"session_{self.timestamp}"
         
         self.base_results_dir = Path(base_results_dir).expanduser().resolve()
         self.session_dir = self.base_results_dir / "session" / self.session_dir_name
@@ -100,7 +109,7 @@ class SessionManager:
     
     def _generate_session_name(self) -> str:
         """Generate a default session name."""
-        return f"session_{datetime.now().strftime('%H%M%S')}"
+        return f"session_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     
     def _setup_signal_handlers(self) -> None:
         """Setup signal handlers for graceful shutdown."""
@@ -357,20 +366,37 @@ _global_session_manager: Optional[SessionManager] = None
 
 
 def get_session_manager() -> Optional[SessionManager]:
-    """Get the global session manager instance."""
+    """Get the global session manager instance.
+
+    .. deprecated::
+        Use ``src.session.SessionManager`` instead.
+    """
+    warnings.warn(
+        "get_session_manager() is deprecated, use src.session.SessionManager instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return _global_session_manager
 
 
 def init_session_manager(session_name: Optional[str] = None) -> SessionManager:
     """
     Initialize and start the global session manager.
-    
+
+    .. deprecated::
+        Use ``src.session.SessionManager`` instead.
+
     Args:
         session_name: Optional session name
-        
+
     Returns:
         Initialized SessionManager instance
     """
+    warnings.warn(
+        "init_session_manager() is deprecated, use src.session.SessionManager instead",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     global _global_session_manager
     _global_session_manager = SessionManager(session_name)
     _global_session_manager.start_session()

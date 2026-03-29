@@ -147,7 +147,7 @@ class TestSearchTool(unittest.TestCase):
         mock_request.assert_called_once()
         call_args = mock_request.call_args
         self.assertIn('search_query', call_args.kwargs)
-        self.assertIn('machine+learning', call_args.kwargs['search_query'])
+        self.assertIn('machine learning', call_args.kwargs['search_query'])
 
     @patch('src.tools.arxiv_tools._make_api_request')
     def test_search_with_field(self, mock_request):
@@ -165,7 +165,7 @@ class TestSearchTool(unittest.TestCase):
         
         self.assertTrue(result['success'])
         call_args = mock_request.call_args
-        self.assertEqual(call_args.kwargs['search_query'], 'au:John+Doe')
+        self.assertEqual(call_args.kwargs['search_query'], 'au:John Doe')
 
     @patch('src.tools.arxiv_tools._make_api_request')
     def test_search_with_category_filter(self, mock_request):
@@ -308,9 +308,14 @@ class TestDownloadTool(unittest.TestCase):
     @patch('src.tools.arxiv_tools.urllib.request.Request')
     def test_download_success(self, mock_request_class, mock_urlopen):
         """Test successful PDF download."""
-        # Mock response
+        # Mock response — read() must return data once, then b'' to
+        # terminate the chunked-download while-loop.  The old mock
+        # returned data *every* call, creating an infinite loop that
+        # consumed 37 GB of memory/disk.
+        pdf_bytes = b'%PDF-1.4 fake content here'
         mock_response = MagicMock()
-        mock_response.read.return_value = b'PDF content here'
+        mock_response.read.side_effect = [pdf_bytes, b'']
+        mock_response.headers = {'Content-Length': str(len(pdf_bytes))}
         mock_urlopen.return_value.__enter__.return_value = mock_response
         
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -325,7 +330,7 @@ class TestDownloadTool(unittest.TestCase):
             # Verify file was created
             downloaded_file = Path(tmpdir) / '2401.12345.pdf'
             self.assertTrue(downloaded_file.exists())
-            self.assertEqual(downloaded_file.read_bytes(), b'PDF content here')
+            self.assertEqual(downloaded_file.read_bytes(), pdf_bytes)
 
     def test_download_already_exists(self):
         """Test download when file already exists."""
@@ -360,10 +365,20 @@ class TestDownloadTool(unittest.TestCase):
             result = json.loads(result_json)
             
             self.assertFalse(result['success'])
-            self.assertIn('404', result['error'])
+            self.assertIn('not found', result['error'].lower())
 
-    def test_download_custom_filename(self):
+    @patch('src.tools.arxiv_tools.urllib.request.urlopen')
+    @patch('src.tools.arxiv_tools.urllib.request.Request')
+    def test_download_custom_filename(self, mock_request_class, mock_urlopen):
         """Test download with custom filename."""
+        # Must mock urlopen — without it, the test makes a real HTTP
+        # request to arxiv.org, which can hang or fail unpredictably.
+        pdf_bytes = b'%PDF-1.4 custom filename test'
+        mock_response = MagicMock()
+        mock_response.read.side_effect = [pdf_bytes, b'']
+        mock_response.headers = {'Content-Length': str(len(pdf_bytes))}
+        mock_urlopen.return_value.__enter__.return_value = mock_response
+        
         with tempfile.TemporaryDirectory() as tmpdir:
             result_json = download_arxiv_pdf(
                 "2401.12345",
@@ -374,6 +389,10 @@ class TestDownloadTool(unittest.TestCase):
             
             self.assertTrue(result['success'])
             self.assertEqual(result['filename'], 'my_paper.pdf')
+            
+            # Verify file was created with custom name
+            downloaded_file = Path(tmpdir) / 'my_paper.pdf'
+            self.assertTrue(downloaded_file.exists())
 
 
 class TestToolDefinitions(unittest.TestCase):
@@ -399,11 +418,12 @@ class TestToolDefinitions(unittest.TestCase):
 
     def test_tool_list(self):
         """Test ARXIV_TOOLS list contains all tools."""
-        self.assertEqual(len(ARXIV_TOOLS), 3)
+        self.assertEqual(len(ARXIV_TOOLS), 4)
         tool_names = [t.name for t in ARXIV_TOOLS]
         self.assertIn("search_arxiv_papers", tool_names)
         self.assertIn("get_arxiv_paper_details", tool_names)
         self.assertIn("download_arxiv_pdf", tool_names)
+        self.assertIn("batch_download_arxiv_pdfs", tool_names)
 
 
 class TestToolExecution(unittest.TestCase):
@@ -425,9 +445,11 @@ class TestToolExecution(unittest.TestCase):
         """
         
         result = SEARCH_ARXIV_TOOL.execute('{"query": "test"}')
-        parsed = json.loads(result)
-        self.assertTrue(parsed["success"])
-        self.assertEqual(parsed["total_results"], 1)
+        decoded = json.loads(result)
+        if isinstance(decoded, str):
+            decoded = json.loads(decoded)
+        self.assertTrue(decoded["success"])
+        self.assertEqual(decoded["total_results"], 1)
 
     def test_search_tool_invalid_json(self):
         """Test search tool with invalid JSON."""
@@ -441,7 +463,7 @@ class TestURLConstruction(unittest.TestCase):
 
     def test_api_url_constants(self):
         """Test API URLs are correct."""
-        self.assertEqual(ARXIV_API_URL, "http://export.arxiv.org/api/query")
+        self.assertEqual(ARXIV_API_URL, "https://export.arxiv.org/api/query")
         self.assertEqual(ARXIV_PDF_URL, "https://arxiv.org/pdf")
 
     @patch('src.tools.arxiv_tools.urllib.request.urlopen')

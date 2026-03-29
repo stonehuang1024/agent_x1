@@ -964,3 +964,266 @@ class TestRebuildToolOutputTruncation:
         result = assembler.rebuild(turn_messages)
         assert isinstance(result, list)
         assert len(result) > 0, "rebuild() returned empty list on over-budget"
+
+
+# ---------------------------------------------------------------------------
+# _load_history — Turn → Message conversion fidelity
+#   Bug: tool messages lost tool_call_id when loaded from session store,
+#   causing Anthropic API 400 errors on multi-turn conversations.
+# ---------------------------------------------------------------------------
+
+def _make_mock_turn(role, content, tool_calls=None, tool_call_id=None):
+    """Create a mock Turn object matching session_store.Turn fields."""
+    turn = MagicMock()
+    turn.role = role
+    turn.content = content
+    turn.tool_calls = tool_calls
+    turn.tool_call_id = tool_call_id
+    # Turn model does NOT have a 'name' attribute — getattr should return None
+    if hasattr(turn, 'name'):
+        del turn.name
+    return turn
+
+
+class TestLoadHistoryToolCallId:
+    """Catches: _load_history dropping tool_call_id on tool messages.
+
+    Root cause: the else branch in _load_history created Message(role, content)
+    without passing tool_call_id, so Anthropic API received tool_use_id=None
+    and returned 400.
+    """
+
+    def test_tool_message_preserves_tool_call_id(self, mock_session_manager):
+        """Tool messages loaded from history must retain tool_call_id.
+        Bug: tool messages went through the generic else branch which
+        created Message(role=role, content=content) without tool_call_id."""
+        sm = mock_session_manager
+        session = MagicMock()
+        session.id = "sess-001"
+        sm.active_session = session
+
+        sm.get_history.return_value = [
+            _make_mock_turn("user", "Do something"),
+            _make_mock_turn(
+                "assistant", "I'll use a tool",
+                tool_calls=[{"id": "call_abc", "function": {"name": "read_file", "arguments": "{}"}}],
+            ),
+            _make_mock_turn("tool", "file contents here", tool_call_id="call_abc"),
+            _make_mock_turn("assistant", "Here is the result"),
+        ]
+
+        assembler = ContextAssembler(session_manager=sm, max_tokens=100000)
+        messages = assembler._load_history()
+
+        tool_msgs = [m for m in messages if m.role == Role.TOOL.value]
+        assert len(tool_msgs) == 1, "Expected exactly one tool message in history"
+        assert tool_msgs[0].tool_call_id == "call_abc", (
+            f"tool_call_id lost during _load_history: got {tool_msgs[0].tool_call_id!r}. "
+            "This causes Anthropic API 400 because tool_use_id becomes None."
+        )
+
+    def test_multiple_tool_messages_each_preserve_tool_call_id(self, mock_session_manager):
+        """When history has multiple tool results, each must keep its own tool_call_id.
+        Bug: all tool messages lost their tool_call_id in the generic else branch."""
+        sm = mock_session_manager
+        session = MagicMock()
+        session.id = "sess-002"
+        sm.active_session = session
+
+        sm.get_history.return_value = [
+            _make_mock_turn("user", "Run two tools"),
+            _make_mock_turn(
+                "assistant", "",
+                tool_calls=[
+                    {"id": "call_1", "function": {"name": "tool_a", "arguments": "{}"}},
+                    {"id": "call_2", "function": {"name": "tool_b", "arguments": "{}"}},
+                ],
+            ),
+            _make_mock_turn("tool", "result_a", tool_call_id="call_1"),
+            _make_mock_turn("tool", "result_b", tool_call_id="call_2"),
+            _make_mock_turn("assistant", "Done"),
+        ]
+
+        assembler = ContextAssembler(session_manager=sm, max_tokens=100000)
+        messages = assembler._load_history()
+
+        tool_msgs = [m for m in messages if m.role == Role.TOOL.value]
+        assert len(tool_msgs) == 2
+        ids = {m.tool_call_id for m in tool_msgs}
+        assert ids == {"call_1", "call_2"}, (
+            f"tool_call_ids not preserved: got {ids}. "
+            "Each tool_result must reference its corresponding tool_use."
+        )
+
+    def test_tool_message_role_is_tool_not_user(self, mock_session_manager):
+        """Tool messages must have role='tool', not be coerced to 'user'.
+        Bug: the else branch mapped unknown roles to USER, so tool messages
+        became user messages, breaking the assistant→tool→assistant sequence."""
+        sm = mock_session_manager
+        session = MagicMock()
+        session.id = "sess-003"
+        sm.active_session = session
+
+        sm.get_history.return_value = [
+            _make_mock_turn("tool", "some result", tool_call_id="call_xyz"),
+        ]
+
+        assembler = ContextAssembler(session_manager=sm, max_tokens=100000)
+        messages = assembler._load_history()
+
+        assert len(messages) == 1
+        assert messages[0].role == Role.TOOL.value, (
+            f"Tool message role was coerced to {messages[0].role!r}. "
+            "The else branch incorrectly mapped 'tool' to 'user'."
+        )
+
+    def test_assistant_with_tool_calls_preserves_tool_calls(self, mock_session_manager):
+        """Assistant messages with tool_calls must preserve the tool_calls list.
+        This was already handled correctly but verify it still works."""
+        sm = mock_session_manager
+        session = MagicMock()
+        session.id = "sess-004"
+        sm.active_session = session
+
+        tc = [{"id": "call_99", "function": {"name": "search", "arguments": '{"q":"test"}'}}]
+        sm.get_history.return_value = [
+            _make_mock_turn("assistant", "Searching...", tool_calls=tc),
+        ]
+
+        assembler = ContextAssembler(session_manager=sm, max_tokens=100000)
+        messages = assembler._load_history()
+
+        assert len(messages) == 1
+        assert messages[0].role == Role.ASSISTANT.value
+        assert messages[0].tool_calls == tc
+
+    def test_plain_assistant_message_no_tool_calls(self, mock_session_manager):
+        """Plain assistant messages (no tool_calls) must not have tool_calls set."""
+        sm = mock_session_manager
+        session = MagicMock()
+        session.id = "sess-005"
+        sm.active_session = session
+
+        sm.get_history.return_value = [
+            _make_mock_turn("assistant", "Just a text reply"),
+        ]
+
+        assembler = ContextAssembler(session_manager=sm, max_tokens=100000)
+        messages = assembler._load_history()
+
+        assert len(messages) == 1
+        assert messages[0].role == Role.ASSISTANT.value
+        assert messages[0].content == "Just a text reply"
+        assert messages[0].tool_calls is None
+
+    def test_user_message_preserved(self, mock_session_manager):
+        """User messages must be preserved with correct role and content."""
+        sm = mock_session_manager
+        session = MagicMock()
+        session.id = "sess-006"
+        sm.active_session = session
+
+        sm.get_history.return_value = [
+            _make_mock_turn("user", "Hello world"),
+        ]
+
+        assembler = ContextAssembler(session_manager=sm, max_tokens=100000)
+        messages = assembler._load_history()
+
+        assert len(messages) == 1
+        assert messages[0].role == Role.USER.value
+        assert messages[0].content == "Hello world"
+
+    def test_full_tool_use_cycle_ordering(self, mock_session_manager):
+        """A complete user→assistant(tool_use)→tool(result)→assistant cycle
+        must be loaded in the correct order with all fields intact.
+        Bug: tool messages lost tool_call_id, breaking the cycle."""
+        sm = mock_session_manager
+        session = MagicMock()
+        session.id = "sess-007"
+        sm.active_session = session
+
+        sm.get_history.return_value = [
+            _make_mock_turn("user", "What's the weather?"),
+            _make_mock_turn(
+                "assistant", "Let me check",
+                tool_calls=[{"id": "call_w1", "function": {"name": "get_weather", "arguments": '{"city":"Beijing"}'}}],
+            ),
+            _make_mock_turn("tool", '{"temp":22}', tool_call_id="call_w1"),
+            _make_mock_turn("assistant", "It's 22°C in Beijing."),
+        ]
+
+        assembler = ContextAssembler(session_manager=sm, max_tokens=100000)
+        messages = assembler._load_history()
+
+        assert len(messages) == 4
+        roles = [m.role for m in messages]
+        assert roles == ["user", "assistant", "tool", "assistant"], (
+            f"Message ordering wrong: {roles}"
+        )
+        # Verify the tool_use → tool_result linkage
+        assert messages[1].tool_calls[0]["id"] == "call_w1"
+        assert messages[2].tool_call_id == "call_w1", (
+            "tool_call_id linkage broken: assistant's tool_use id doesn't match "
+            "tool message's tool_call_id"
+        )
+
+    def test_no_active_session_returns_empty(self, mock_session_manager):
+        """When no session is active, _load_history must return empty list."""
+        sm = mock_session_manager
+        sm.active_session = None
+
+        assembler = ContextAssembler(session_manager=sm, max_tokens=100000)
+        messages = assembler._load_history()
+
+        assert messages == []
+
+    def test_exception_in_get_history_returns_empty(self, mock_session_manager):
+        """If get_history raises, _load_history must return empty list, not crash."""
+        sm = mock_session_manager
+        session = MagicMock()
+        session.id = "sess-err"
+        sm.active_session = session
+        sm.get_history.side_effect = RuntimeError("DB connection lost")
+
+        assembler = ContextAssembler(session_manager=sm, max_tokens=100000)
+        messages = assembler._load_history()
+
+        assert messages == [], "Exception should be caught, not propagated"
+
+    def test_tool_call_id_survives_full_build_pipeline(self, mock_session_manager, mock_prompt_provider):
+        """End-to-end: tool_call_id must survive through build() → _load_history()
+        → _reorder_messages() and appear in the final message list.
+        Bug: tool_call_id was lost in _load_history, so it was None in the
+        final output sent to the LLM API."""
+        sm = mock_session_manager
+        session = MagicMock()
+        session.id = "sess-e2e-001"
+        sm.active_session = session
+
+        sm.get_history.return_value = [
+            _make_mock_turn("user", "Previous question"),
+            _make_mock_turn(
+                "assistant", "Using tool",
+                tool_calls=[{"id": "call_e2e", "function": {"name": "read_file", "arguments": "{}"}}],
+            ),
+            _make_mock_turn("tool", "file data", tool_call_id="call_e2e"),
+            _make_mock_turn("assistant", "Here's the answer"),
+        ]
+
+        assembler = ContextAssembler(
+            session_manager=sm,
+            prompt_provider=mock_prompt_provider,
+            max_tokens=100000,
+        )
+        result = assembler.build(user_input="New question")
+
+        tool_msgs = [m for m in result if m.role == Role.TOOL.value]
+        assert len(tool_msgs) == 1, (
+            f"Expected 1 tool message in build() output, got {len(tool_msgs)}"
+        )
+        assert tool_msgs[0].tool_call_id == "call_e2e", (
+            f"tool_call_id lost through full build() pipeline: "
+            f"got {tool_msgs[0].tool_call_id!r}. "
+            "This causes Anthropic API 400 on multi-turn conversations."
+        )
