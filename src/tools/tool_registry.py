@@ -77,6 +77,11 @@ TOOL_CATEGORIES: Dict[str, Dict[str, Any]] = {
         "description": "Search code with regex (grep), find files by pattern (glob), list directories (ls)",
         "tools": []
     },
+    "context": {
+        "label": "Context Management",
+        "description": "Recall compressed conversation history and manage context",
+        "tools": []
+    },
 }
 
 

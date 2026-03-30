@@ -761,8 +761,9 @@ class TestRebuildToolOutputTruncation:
         )
 
     def test_assistant_messages_never_truncated(self, mock_session_manager):
-        """Assistant messages must never be truncated by _truncate_old_tool_outputs.
-        Bug: truncation applied to all old messages, not just tool results."""
+        """Long plain-text assistant messages beyond keep_recent are now
+        truncated (Task 5 enhancement).  Assistant messages WITH tool_calls
+        must still be preserved intact."""
         assembler = _make_assembler_with_static_prefix(mock_session_manager)
 
         long_assistant_content = "Here is my detailed analysis:\n" + "explanation " * 500
@@ -786,16 +787,24 @@ class TestRebuildToolOutputTruncation:
 
         result = assembler.rebuild(turn_messages)
 
-        # Find the long assistant message
+        # The long plain-text assistant message should now be truncated
         long_asst = [m for m in result if m.role == Role.ASSISTANT.value
                      and m.content and "detailed analysis" in m.content]
         assert len(long_asst) == 1, "Long assistant message should still be present"
-        assert long_asst[0].content == long_assistant_content, (
-            f"Assistant message was truncated! "
-            f"Expected {len(long_assistant_content)} chars, "
-            f"got {len(long_asst[0].content or '')}. "
-            f"Bug: truncation applied to assistant messages, not just tool results."
+        assert len(long_asst[0].content) < len(long_assistant_content), (
+            "Long assistant message should be truncated (Task 5 enhancement)"
         )
+        assert "truncated" in long_asst[0].content.lower(), (
+            "Truncated assistant message should contain truncation marker"
+        )
+
+        # Assistant messages WITH tool_calls must NOT be truncated
+        tool_call_assts = [m for m in result if m.role == Role.ASSISTANT.value
+                          and m.tool_calls is not None]
+        for m in tool_call_assts:
+            assert "truncated" not in (m.content or "").lower(), (
+                "Assistant messages with tool_calls must not be truncated"
+            )
 
     def test_truncation_preserves_head_and_tail(self, mock_session_manager):
         """Truncated tool output must preserve head and tail for context.
@@ -1064,16 +1073,25 @@ class TestLoadHistoryToolCallId:
         session.id = "sess-003"
         sm.active_session = session
 
+        # Include the assistant(tool_calls) so the tool message is not orphaned
         sm.get_history.return_value = [
+            _make_mock_turn(
+                "assistant", "Using tool",
+                tool_calls=[{"id": "call_xyz", "function": {"name": "test_tool", "arguments": "{}"}}],
+            ),
             _make_mock_turn("tool", "some result", tool_call_id="call_xyz"),
         ]
 
         assembler = ContextAssembler(session_manager=sm, max_tokens=100000)
         messages = assembler._load_history()
 
-        assert len(messages) == 1
-        assert messages[0].role == Role.TOOL.value, (
-            f"Tool message role was coerced to {messages[0].role!r}. "
+        tool_msgs = [m for m in messages if m.role == Role.TOOL.value]
+        assert len(tool_msgs) == 1, (
+            f"Expected 1 tool message, got {len(tool_msgs)}. "
+            "Tool message may have been coerced to a different role."
+        )
+        assert tool_msgs[0].role == Role.TOOL.value, (
+            f"Tool message role was coerced to {tool_msgs[0].role!r}. "
             "The else branch incorrectly mapped 'tool' to 'user'."
         )
 
@@ -1227,3 +1245,209 @@ class TestLoadHistoryToolCallId:
             f"got {tool_msgs[0].tool_call_id!r}. "
             "This causes Anthropic API 400 on multi-turn conversations."
         )
+
+
+# ---------------------------------------------------------------------------
+# _ensure_tool_call_pairing — Orphaned tool_result detection
+#   Bug: _load_history(recent_n=10) could slice history in the middle of a
+#   tool_call group, leaving tool_result messages without their corresponding
+#   assistant(tool_use).  The Anthropic API then returns:
+#     400 - {"error":{"message":"tool_call_id  is not found"}}
+# ---------------------------------------------------------------------------
+
+class TestEnsureToolCallPairing:
+    """Catches: orphaned tool_result messages that lack a matching
+    assistant(tool_use) in the loaded history window.
+
+    Root cause: get_history(recent_n=10) returns the last 10 turns.
+    If turn 10 is a tool_result whose assistant(tool_calls) is turn 9
+    (outside the window), the API receives a tool_result referencing a
+    tool_use_id that doesn't exist in the conversation.
+    """
+
+    def test_orphaned_tool_results_are_dropped(self, mock_session_manager):
+        """When history window starts with tool_result messages whose
+        assistant(tool_calls) is outside the window, those tool_results
+        must be dropped to prevent API 400.
+
+        Bug: without _ensure_tool_call_pairing, these orphaned tool_results
+        would be sent to the API, causing 'tool_call_id is not found'."""
+        sm = mock_session_manager
+        session = MagicMock()
+        session.id = "sess-orphan-001"
+        sm.active_session = session
+
+        # Simulate: assistant(tool_calls) is NOT in the window,
+        # but its tool_results ARE (this is the bug scenario)
+        sm.get_history.return_value = [
+            _make_mock_turn("tool", "result_a", tool_call_id="call_outside_window"),
+            _make_mock_turn("tool", "result_b", tool_call_id="call_outside_window_2"),
+            _make_mock_turn("user", "continue"),
+            _make_mock_turn("assistant", "OK, continuing"),
+        ]
+
+        assembler = ContextAssembler(session_manager=sm, max_tokens=100000)
+        messages = assembler._load_history()
+
+        tool_msgs = [m for m in messages if m.role == Role.TOOL.value]
+        assert len(tool_msgs) == 0, (
+            f"Expected 0 tool messages (orphaned tool_results should be dropped), "
+            f"got {len(tool_msgs)}. "
+            "These orphaned tool_results would cause Anthropic API 400: "
+            "'tool_call_id is not found'."
+        )
+        # The user and assistant messages should still be present
+        assert len(messages) == 2
+
+    def test_paired_tool_results_are_kept(self, mock_session_manager):
+        """When tool_results have their matching assistant(tool_calls) in
+        the window, they must be preserved.
+
+        Bug: an overly aggressive pairing check could drop valid tool_results."""
+        sm = mock_session_manager
+        session = MagicMock()
+        session.id = "sess-paired-001"
+        sm.active_session = session
+
+        sm.get_history.return_value = [
+            _make_mock_turn("user", "Do something"),
+            _make_mock_turn(
+                "assistant", "Using tools",
+                tool_calls=[
+                    {"id": "call_A", "function": {"name": "tool_a", "arguments": "{}"}},
+                    {"id": "call_B", "function": {"name": "tool_b", "arguments": "{}"}},
+                ],
+            ),
+            _make_mock_turn("tool", "result_a", tool_call_id="call_A"),
+            _make_mock_turn("tool", "result_b", tool_call_id="call_B"),
+            _make_mock_turn("assistant", "Done"),
+        ]
+
+        assembler = ContextAssembler(session_manager=sm, max_tokens=100000)
+        messages = assembler._load_history()
+
+        tool_msgs = [m for m in messages if m.role == Role.TOOL.value]
+        assert len(tool_msgs) == 2, (
+            f"Expected 2 paired tool messages to be kept, got {len(tool_msgs)}. "
+            "Valid tool_results with matching assistant(tool_use) were incorrectly dropped."
+        )
+        ids = {m.tool_call_id for m in tool_msgs}
+        assert ids == {"call_A", "call_B"}
+
+    def test_mixed_orphaned_and_paired_tool_results(self, mock_session_manager):
+        """When some tool_results are orphaned and some are paired,
+        only the orphaned ones should be dropped.
+
+        Bug: dropping ALL tool_results or keeping ALL would both be wrong."""
+        sm = mock_session_manager
+        session = MagicMock()
+        session.id = "sess-mixed-001"
+        sm.active_session = session
+
+        sm.get_history.return_value = [
+            # Orphaned: no assistant(tool_calls) with id="call_orphan"
+            _make_mock_turn("tool", "orphaned_result", tool_call_id="call_orphan"),
+            # Paired: assistant has tool_calls with id="call_paired"
+            _make_mock_turn(
+                "assistant", "Using tool",
+                tool_calls=[{"id": "call_paired", "function": {"name": "t", "arguments": "{}"}}],
+            ),
+            _make_mock_turn("tool", "paired_result", tool_call_id="call_paired"),
+            _make_mock_turn("assistant", "Done"),
+        ]
+
+        assembler = ContextAssembler(session_manager=sm, max_tokens=100000)
+        messages = assembler._load_history()
+
+        tool_msgs = [m for m in messages if m.role == Role.TOOL.value]
+        assert len(tool_msgs) == 1, (
+            f"Expected 1 tool message (orphaned dropped, paired kept), "
+            f"got {len(tool_msgs)}."
+        )
+        assert tool_msgs[0].tool_call_id == "call_paired"
+        assert tool_msgs[0].content == "paired_result"
+
+    def test_tool_result_with_empty_tool_call_id_is_dropped(self, mock_session_manager):
+        """Tool messages with empty string tool_call_id should be dropped.
+
+        Bug: empty string passes truthiness check but API still rejects it."""
+        sm = mock_session_manager
+        session = MagicMock()
+        session.id = "sess-empty-id"
+        sm.active_session = session
+
+        sm.get_history.return_value = [
+            _make_mock_turn("tool", "result", tool_call_id=""),
+            _make_mock_turn("user", "hello"),
+        ]
+
+        assembler = ContextAssembler(session_manager=sm, max_tokens=100000)
+        messages = assembler._load_history()
+
+        tool_msgs = [m for m in messages if m.role == Role.TOOL.value]
+        assert len(tool_msgs) == 0, (
+            "Tool message with empty tool_call_id should be dropped. "
+            "Empty string tool_use_id causes API 400."
+        )
+
+    def test_realistic_session_resume_scenario(self, mock_session_manager):
+        """Simulate the exact bug scenario from production:
+        1. Session has 23 turns with tool_call groups
+        2. get_history(recent_n=10) returns turns 14-23
+        3. Turns 14-16 are tool_results from turn 13's assistant(tool_calls)
+        4. Turn 13 is NOT in the window
+        5. API returns 400: 'tool_call_id is not found'
+
+        This test must FAIL if _ensure_tool_call_pairing is removed."""
+        sm = mock_session_manager
+        session = MagicMock()
+        session.id = "sess-resume-001"
+        sm.active_session = session
+
+        # Simulating turns 14-23 (turn 13 with assistant(tool_calls) is outside)
+        sm.get_history.return_value = [
+            # Orphaned tool_results from turn 13's tool_calls
+            _make_mock_turn("tool", "pdf content...", tool_call_id="call_read_pdf"),
+            _make_mock_turn("tool", "search error", tool_call_id="call_web_search_1"),
+            _make_mock_turn("tool", "search error", tool_call_id="call_web_search_2"),
+            # New tool_call group (paired, within window)
+            _make_mock_turn(
+                "assistant", "Let me search more",
+                tool_calls=[
+                    {"id": "call_search_3", "function": {"name": "search", "arguments": "{}"}},
+                ],
+            ),
+            _make_mock_turn("tool", "search results", tool_call_id="call_search_3"),
+            # Another paired group
+            _make_mock_turn(
+                "assistant", "Creating directory",
+                tool_calls=[
+                    {"id": "call_mkdir", "function": {"name": "mkdir", "arguments": "{}"}},
+                ],
+            ),
+            _make_mock_turn("tool", "created", tool_call_id="call_mkdir"),
+            # Error response stored as final turn
+            _make_mock_turn("user", "original input"),
+            _make_mock_turn("assistant", "API Error: 504"),
+            # User retry
+            _make_mock_turn("user", "continue"),
+        ]
+
+        assembler = ContextAssembler(session_manager=sm, max_tokens=100000)
+        messages = assembler._load_history()
+
+        # The 3 orphaned tool_results should be dropped
+        tool_msgs = [m for m in messages if m.role == Role.TOOL.value]
+        orphaned_ids = {"call_read_pdf", "call_web_search_1", "call_web_search_2"}
+        for tm in tool_msgs:
+            assert tm.tool_call_id not in orphaned_ids, (
+                f"Orphaned tool_result with tool_call_id={tm.tool_call_id!r} "
+                f"was NOT dropped. This would cause Anthropic API 400: "
+                f"'tool_call_id is not found'."
+            )
+
+        # The paired tool_results should be kept
+        paired_ids = {m.tool_call_id for m in tool_msgs}
+        assert "call_search_3" in paired_ids, "Paired tool_result call_search_3 was incorrectly dropped"
+        assert "call_mkdir" in paired_ids, "Paired tool_result call_mkdir was incorrectly dropped"
+        assert len(tool_msgs) == 2, f"Expected 2 paired tool messages, got {len(tool_msgs)}"

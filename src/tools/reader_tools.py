@@ -273,12 +273,13 @@ def _fallback_pdf_to_markdown(file_path: str) -> Dict[str, Any]:
     
     try:
         doc = fitz.open(file_path)
+        num_pages = len(doc)
         
         markdown_lines = []
         markdown_lines.append(f"# PDF Document: {Path(file_path).name}\n")
-        markdown_lines.append(f"**Pages:** {len(doc)}\n\n---\n")
+        markdown_lines.append(f"**Pages:** {num_pages}\n\n---\n")
         
-        for page_num in range(len(doc)):
+        for page_num in range(num_pages):
             page = doc.load_page(page_num)
             text = page.get_text()
             
@@ -296,7 +297,7 @@ def _fallback_pdf_to_markdown(file_path: str) -> Dict[str, Any]:
             "markdown": markdown,
             "file_path": file_path,
             "format": "markdown",
-            "pages": len(doc),
+            "pages": num_pages,
             "fallback": True
         }
         

@@ -18,6 +18,7 @@ from urllib.error import HTTPError, URLError
 
 from ..core.tool import Tool
 from ..util.logger import get_logger
+from ..util.http_client import http_get, http_download, urllib_get, _is_ssl_error, _curl_get
 
 logger = get_logger(__name__)
 
@@ -27,7 +28,7 @@ ARXIV_PDF_URL = "https://arxiv.org/pdf"
 
 # Retry configuration
 MAX_RETRIES = 3
-RETRY_DELAY_BASE = 2  # seconds
+RETRY_DELAY_BASE = 5  # seconds (arXiv recommends >= 3s between requests)
 API_TIMEOUT = 30
 PDF_TIMEOUT = 120  # Increased for large PDFs
 
@@ -121,51 +122,43 @@ def _make_api_request(
     
     try:
         logger.info(f"[ArXivAPI] Requesting: {url}")
-        req = urllib.request.Request(
+        
+        # Use urllib_get with automatic curl fallback for SSL errors
+        result = urllib_get(
             url,
             headers={
                 'User-Agent': 'arXivTool/1.0 (research assistant)',
                 'Accept': 'application/atom+xml'
-            }
+            },
+            timeout=API_TIMEOUT,
         )
         
-        with urllib.request.urlopen(req, timeout=API_TIMEOUT) as response:
-            data = response.read().decode('utf-8')
-            logger.info(f"[ArXivAPI] Response: {len(data)} bytes")
+        if result["success"]:
+            data = result["data"]
+            logger.info(f"[ArXivAPI] Response: {len(data)} bytes (via {result.get('method', 'unknown')})")
             return data
-            
-    except HTTPError as e:
-        logger.error(f"[ArXivAPI] HTTP Error {e.code}: {e.reason}")
+        
+        # Handle HTTP errors
+        status_code = result.get("status_code", 0)
+        error_msg = result.get("error", "Unknown error")
+        logger.error(f"[ArXivAPI] Error: {error_msg}")
+        
         # Don't retry on 404
-        if e.code == 404:
+        if status_code == 404:
             return None
         # Retry on 5xx errors or rate limiting (429)
-        if e.code >= 500 or e.code == 429:
+        if status_code >= 500 or status_code == 429:
             if retry_attempt < MAX_RETRIES:
-                delay = RETRY_DELAY_BASE * (2 ** retry_attempt)
+                base = RETRY_DELAY_BASE * 2 if status_code == 429 else RETRY_DELAY_BASE
+                delay = base * (2 ** retry_attempt)
                 logger.warning(f"[ArXivAPI] Retrying in {delay}s (attempt {retry_attempt + 1}/{MAX_RETRIES})")
                 time.sleep(delay)
                 return _make_api_request(
                     search_query, start, max_results, sort_by, sort_order, id_list,
                     retry_attempt=retry_attempt + 1
                 )
-        return None
-        
-    except URLError as e:
-        logger.error(f"[ArXivAPI] URL Error: {e.reason}")
-        if retry_attempt < MAX_RETRIES:
-            delay = RETRY_DELAY_BASE * (2 ** retry_attempt)
-            logger.warning(f"[ArXivAPI] Retrying in {delay}s (attempt {retry_attempt + 1}/{MAX_RETRIES})")
-            time.sleep(delay)
-            return _make_api_request(
-                search_query, start, max_results, sort_by, sort_order, id_list,
-                retry_attempt=retry_attempt + 1
-            )
-        return None
-        
-    except TimeoutError as e:
-        logger.error(f"[ArXivAPI] Timeout Error: {e}")
-        if retry_attempt < MAX_RETRIES:
+        # Retry on connection/timeout errors (status_code == 0)
+        if status_code == 0 and retry_attempt < MAX_RETRIES:
             delay = RETRY_DELAY_BASE * (2 ** retry_attempt)
             logger.warning(f"[ArXivAPI] Retrying in {delay}s (attempt {retry_attempt + 1}/{MAX_RETRIES})")
             time.sleep(delay)
@@ -176,7 +169,7 @@ def _make_api_request(
         return None
         
     except Exception as e:
-        logger.error(f"[ArXivAPI] Error: {e}")
+        logger.error(f"[ArXivAPI] Unexpected error: {e}")
         return None
 
 
@@ -517,44 +510,25 @@ def download_arxiv_pdf(
     pdf_url = f"{ARXIV_PDF_URL}/{clean_id}.pdf"
     logger.info(f"[ArXivTool] Downloading PDF from {pdf_url}")
     
+    # Use http_download with automatic curl fallback for SSL errors
+    download_headers = {
+        'User-Agent': 'arXivTool/1.0 (research assistant)',
+        'Accept': 'application/pdf'
+    }
+    
     last_error = None
     for attempt in range(max_retries + 1):
-        try:
-            req = urllib.request.Request(
-                pdf_url,
-                headers={
-                    'User-Agent': 'arXivTool/1.0 (research assistant)',
-                    'Accept': 'application/pdf'
-                }
-            )
-            
-            # Use chunked download for large files
-            with urllib.request.urlopen(req, timeout=PDF_TIMEOUT) as response:
-                # Check content length if available
-                content_length = response.headers.get('Content-Length')
-                if content_length:
-                    logger.info(f"[ArXivTool] Expected file size: {int(content_length):,} bytes")
-                
-                # Download in chunks
-                downloaded = 0
-                with open(file_path, 'wb') as f:
-                    while True:
-                        chunk = response.read(chunk_size)
-                        if not chunk:
-                            break
-                        f.write(chunk)
-                        downloaded += len(chunk)
-                        
-                        # Log progress for large files every 1MB
-                        if downloaded % (1024 * 1024) < chunk_size:
-                            logger.info(f"[ArXivTool] Downloaded {downloaded:,} bytes...")
-            
-            file_size = file_path.stat().st_size
-            logger.info(f"[ArXivTool] Successfully downloaded {file_size:,} bytes to {file_path}")
-            
-            # Verify download (basic check: file should not be empty)
-            if file_size == 0:
-                raise ValueError("Downloaded file is empty")
+        result = http_download(
+            pdf_url,
+            str(file_path),
+            headers=download_headers,
+            timeout=PDF_TIMEOUT,
+        )
+        
+        if result.get("success"):
+            file_size = result.get("size_bytes", 0)
+            method = result.get("method", "unknown")
+            logger.info(f"[ArXivTool] Successfully downloaded {file_size:,} bytes to {file_path} (via {method})")
             
             # Verify it's a PDF (check magic bytes)
             with open(file_path, 'rb') as f:
@@ -570,87 +544,37 @@ def download_arxiv_pdf(
                 "size_bytes": file_size,
                 "pdf_url": pdf_url,
                 "already_exists": False,
-                "attempts": attempt + 1
+                "attempts": attempt + 1,
+                "download_method": method
             }, ensure_ascii=False)
-            
-        except HTTPError as e:
-            last_error = e
-            error_msg = f"HTTP Error {e.code}: {e.reason}"
-            
-            if e.code == 404:
-                error_msg = f"Paper {arxiv_id} not found on arXiv"
-                logger.error(f"[ArXivTool] {error_msg}")
-                return json.dumps({
-                    "success": False,
-                    "arxiv_id": arxiv_id,
-                    "error": error_msg
-                }, ensure_ascii=False)
-            
-            # Retry on 5xx errors or rate limiting (429)
-            if e.code >= 500 or e.code == 429:
-                if attempt < max_retries:
-                    delay = RETRY_DELAY_BASE * (2 ** attempt)
-                    logger.warning(f"[ArXivTool] Server error, retrying in {delay}s (attempt {attempt + 1}/{max_retries})")
-                    time.sleep(delay)
-                    continue
-            
-            logger.error(f"[ArXivTool] Download error: {error_msg}")
+        
+        # Download failed
+        error_msg = result.get("error", "Unknown error")
+        status_code = result.get("status_code", 0)
+        last_error = error_msg
+        
+        if status_code == 404:
+            logger.error(f"[ArXivTool] Paper {arxiv_id} not found on arXiv")
             return json.dumps({
                 "success": False,
                 "arxiv_id": arxiv_id,
-                "error": error_msg,
-                "attempts": attempt + 1
+                "error": f"Paper {arxiv_id} not found on arXiv"
             }, ensure_ascii=False)
-            
-        except URLError as e:
-            last_error = e
-            if attempt < max_retries:
-                delay = RETRY_DELAY_BASE * (2 ** attempt)
-                logger.warning(f"[ArXivTool] Network error ({e.reason}), retrying in {delay}s (attempt {attempt + 1}/{max_retries})")
-                time.sleep(delay)
-                continue
-            
-            logger.error(f"[ArXivTool] Network error after {max_retries + 1} attempts: {e.reason}")
-            return json.dumps({
-                "success": False,
-                "arxiv_id": arxiv_id,
-                "error": f"Network error: {str(e.reason)}. Please check your internet connection.",
-                "attempts": attempt + 1
-            }, ensure_ascii=False)
-            
-        except TimeoutError as e:
-            last_error = e
-            if attempt < max_retries:
-                delay = RETRY_DELAY_BASE * (2 ** attempt)
-                logger.warning(f"[ArXivTool] Timeout, retrying in {delay}s (attempt {attempt + 1}/{max_retries})")
-                time.sleep(delay)
-                continue
-            
-            logger.error(f"[ArXivTool] Timeout after {max_retries + 1} attempts")
-            return json.dumps({
-                "success": False,
-                "arxiv_id": arxiv_id,
-                "error": f"Download timeout. The paper may be too large or the network is slow. Try again later.",
-                "attempts": attempt + 1
-            }, ensure_ascii=False)
-            
-        except Exception as e:
-            last_error = e
-            if attempt < max_retries:
-                delay = RETRY_DELAY_BASE * (2 ** attempt)
-                logger.warning(f"[ArXivTool] Error ({e}), retrying in {delay}s (attempt {attempt + 1}/{max_retries})")
-                time.sleep(delay)
-                continue
-            
-            logger.error(f"[ArXivTool] Download error after {max_retries + 1} attempts: {e}")
-            return json.dumps({
-                "success": False,
-                "arxiv_id": arxiv_id,
-                "error": f"Download failed: {str(e)}",
-                "attempts": attempt + 1
-            }, ensure_ascii=False)
+        
+        if attempt < max_retries:
+            delay = RETRY_DELAY_BASE * (2 ** attempt)
+            logger.warning(f"[ArXivTool] Download error ({error_msg}), retrying in {delay}s (attempt {attempt + 1}/{max_retries})")
+            time.sleep(delay)
+            # Clean up partial download
+            if file_path.exists():
+                try:
+                    file_path.unlink()
+                except OSError:
+                    pass
+            continue
+        
+        logger.error(f"[ArXivTool] Download failed after {max_retries + 1} attempts: {error_msg}")
     
-    # Should not reach here, but just in case
     return json.dumps({
         "success": False,
         "arxiv_id": arxiv_id,

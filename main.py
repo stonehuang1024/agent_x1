@@ -225,8 +225,12 @@ def create_agent_loop(engine, config: AppConfig, use_new_system: bool = False,
             session_manager=new_session_manager,
             memory_controller=memory_controller,
             prompt_provider=prompt_provider,
-            max_tokens=config.llm.max_tokens * 10  # Context window estimate
+            context_config=config.context,
         )
+        
+        # Inject archive instance for recall_compressed_messages tool
+        from src.tools.context_tools import set_archive_instance
+        set_archive_instance(context_assembler._archive)
         
         # Initialize runtime components
         from src.core.tool import ToolRegistry

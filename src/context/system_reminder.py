@@ -40,6 +40,7 @@ class SystemReminderBuilder:
         self,
         user_input: str,
         project_path: Optional[Path] = None,
+        has_compression: bool = False,
     ) -> str:
         """Construct a user message with ``<system-reminder>`` prefix.
 
@@ -47,6 +48,7 @@ class SystemReminderBuilder:
             user_input: Original user input text.
             project_path: Project root for git status lookup. If None,
                           git status is skipped.
+            has_compression: Whether compressed messages exist in the session.
 
         Returns:
             String with ``<system-reminder>`` block followed by user input.
@@ -56,7 +58,7 @@ class SystemReminderBuilder:
         if project_path is not None:
             git_info = self._get_git_status(project_path)
 
-        reminder = self._format_reminder(current_date, git_info)
+        reminder = self._format_reminder(current_date, git_info, has_compression)
         return f"{reminder}\n\n{user_input}"
 
     # ------------------------------------------------------------------
@@ -134,6 +136,7 @@ class SystemReminderBuilder:
     def _format_reminder(
         current_date: str,
         git_info: Optional[Dict[str, str]],
+        has_compression: bool = False,
     ) -> str:
         """Format the ``<system-reminder>`` block."""
         lines = ["<system-reminder>"]
@@ -145,6 +148,24 @@ class SystemReminderBuilder:
             lines.append("# gitStatus")
             lines.append(f"Branch: {git_info['branch']}")
             lines.append(f"Recent changes: {git_info['recent_changes']}")
+
+        if has_compression:
+            lines.append("")
+            lines.append("# compressedContext")
+            lines.append(
+                "Some earlier messages in this conversation have been compressed to save context space."
+            )
+            lines.append(
+                "Compressed sections are marked with <compression_metadata> tags or "
+                "[... truncated ... | archive_id=<id>] markers."
+            )
+            lines.append(
+                "If you need the full original content of a compressed section, "
+                "use the recall_compressed_messages tool with the corresponding archive_id."
+            )
+            lines.append(
+                "Only recall when the compressed summary is insufficient for your current task."
+            )
 
         lines.append("</system-reminder>")
         return "\n".join(lines)

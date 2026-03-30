@@ -163,6 +163,13 @@ from .codebase_search_tools import (
     CODEBASE_TOOLS,
 )
 
+# --- Context management tools ---
+from .context_tools import (
+    RECALL_COMPRESSED_MESSAGES_TOOL,
+    CONTEXT_TOOLS,
+    set_archive_instance,
+)
+
 # ----------------------------------------------------------------
 # Build the categorized registry
 # ----------------------------------------------------------------
@@ -184,6 +191,7 @@ TOOL_REGISTRY.register_many(DATA_TOOLS, "data")
 TOOL_REGISTRY.register_many(READER_TOOLS, "reader")
 TOOL_REGISTRY.register_many(ARXIV_TOOLS, "arxiv")
 TOOL_REGISTRY.register_many(CODEBASE_TOOLS, "codebase")
+TOOL_REGISTRY.register_many(CONTEXT_TOOLS, "context")
 
 # Flat list of every registered tool (preserves category insertion order)
 ALL_TOOLS = list(TOOL_REGISTRY._tools.values())
@@ -286,4 +294,8 @@ __all__ = [
     "GLOB_SEARCH_TOOL",
     "LS_DIRECTORY_TOOL",
     "CODEBASE_TOOLS",
+    # Context
+    "RECALL_COMPRESSED_MESSAGES_TOOL",
+    "CONTEXT_TOOLS",
+    "set_archive_instance",
 ]

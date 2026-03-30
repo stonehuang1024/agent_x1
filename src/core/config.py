@@ -126,6 +126,106 @@ class ToolSafetyConfig:
 
 
 @dataclass
+class ContextConfig:
+    """Context window and compression configuration.
+
+    All context-compression parameters in one place.  Loaded from the
+    ``context`` section of the YAML config file and overridable via
+    ``CONTEXT_*`` environment variables.
+    """
+
+    # -- Token budget --
+    context_window_tokens: int = 128000
+    reserve_tokens: int = 4096
+
+    # -- Compression thresholds (utilization ratios, 0.0 - 1.0) --
+    soft_threshold: float = 0.7
+    warning_threshold: float = 0.8
+    critical_threshold: float = 0.95
+
+    # -- Truncation limits (characters) --
+    max_tool_output_length: int = 1000
+    max_assistant_output_length: int = 3000
+
+    # -- Recent message window --
+    keep_recent: int = 4
+    min_keep_recent: int = 2
+
+    # -- LLM summary controls --
+    min_summary_tokens: int = 2000
+    min_summary_interval: int = 6
+    summary_threshold: int = 20
+
+    # -- Importance scoring --
+    low_importance_threshold: float = 0.3
+    high_importance_threshold: float = 0.7
+
+    # -- Prune settings --
+    prune_minimum_tokens: int = 5000
+    prune_protect_window: int = 8
+    prune_preview_chars: int = 200
+
+    # -- Archive & recall --
+    recall_max_tokens: int = 4000
+
+    # -- Adaptive behaviour --
+    frequent_summary_warning_count: int = 3
+
+    def __post_init__(self):
+        """Validate all parameters."""
+        self.validate()
+
+    def validate(self):
+        """Check parameter legality.  Raises ``ValueError`` on failure."""
+        if self.context_window_tokens <= 0:
+            raise ValueError(
+                f"context_window_tokens must be > 0, got {self.context_window_tokens}"
+            )
+        if self.reserve_tokens <= 0 or self.reserve_tokens >= self.context_window_tokens:
+            raise ValueError(
+                f"reserve_tokens must be in (0, context_window_tokens={self.context_window_tokens}), "
+                f"got {self.reserve_tokens}"
+            )
+        # Threshold ordering
+        if not (0.0 < self.soft_threshold < 1.0):
+            raise ValueError(
+                f"soft_threshold must be in (0.0, 1.0), got {self.soft_threshold}"
+            )
+        if not (0.0 < self.warning_threshold < 1.0):
+            raise ValueError(
+                f"warning_threshold must be in (0.0, 1.0), got {self.warning_threshold}"
+            )
+        if not (0.0 < self.critical_threshold < 1.0):
+            raise ValueError(
+                f"critical_threshold must be in (0.0, 1.0), got {self.critical_threshold}"
+            )
+        if not (self.soft_threshold < self.warning_threshold < self.critical_threshold):
+            raise ValueError(
+                f"Thresholds must satisfy soft < warning < critical, "
+                f"got {self.soft_threshold} / {self.warning_threshold} / {self.critical_threshold}"
+            )
+        # keep_recent / min_keep_recent
+        if self.min_keep_recent < 2:
+            self.min_keep_recent = 2
+        if self.keep_recent < self.min_keep_recent:
+            raise ValueError(
+                f"keep_recent ({self.keep_recent}) must be >= min_keep_recent ({self.min_keep_recent})"
+            )
+        if self.max_tool_output_length <= 0:
+            raise ValueError(
+                f"max_tool_output_length must be > 0, got {self.max_tool_output_length}"
+            )
+        if self.min_summary_tokens <= 0:
+            raise ValueError(
+                f"min_summary_tokens must be > 0, got {self.min_summary_tokens}"
+            )
+        if self.min_summary_interval < 1:
+            raise ValueError(
+                f"min_summary_interval must be >= 1, got {self.min_summary_interval}"
+            )
+
+
+@dataclass
 class AppConfig:
     """
     Main application configuration.
@@ -141,6 +241,7 @@ class AppConfig:
     llm: LLMConfig = field(default_factory=LLMConfig)
     paths: PathConfig = field(default_factory=PathConfig)
     tool_safety: ToolSafetyConfig = field(default_factory=ToolSafetyConfig)
+    context: ContextConfig = field(default_factory=ContextConfig)
     log_level: str = "INFO"
     
     def validate(self) -> None:
@@ -187,6 +288,9 @@ class AppConfig:
         valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         if self.log_level.upper() not in valid_levels:
             raise ValueError(f"Invalid log level: {self.log_level}. Must be one of {valid_levels}")
+
+        # Validate context config
+        self.context.validate()
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
@@ -461,7 +565,13 @@ def load_config(
             for key, value in file_config["tool_safety"].items():
                 if hasattr(config.tool_safety, key):
                     setattr(config.tool_safety, key, value)
-        
+
+        # Apply context config
+        if "context" in file_config:
+            for key, value in file_config["context"].items():
+                if hasattr(config.context, key):
+                    setattr(config.context, key, value)
+
         # Legacy config structure (backward compatibility)
         if "llm" in file_config:
             for key, value in file_config["llm"].items():
@@ -493,7 +603,34 @@ def load_config(
         config.tool_safety.default_max_output = int(os.getenv("TOOL_DEFAULT_MAX_OUTPUT"))
     if os.getenv("TOOL_SUBPROCESS_TIMEOUT"):
         config.tool_safety.subprocess_timeout = int(os.getenv("TOOL_SUBPROCESS_TIMEOUT"))
-    
+
+    # Apply context env vars (highest priority)
+    _context_env_map = {
+        "CONTEXT_WINDOW_TOKENS": ("context_window_tokens", int),
+        "CONTEXT_RESERVE_TOKENS": ("reserve_tokens", int),
+        "CONTEXT_SOFT_THRESHOLD": ("soft_threshold", float),
+        "CONTEXT_WARNING_THRESHOLD": ("warning_threshold", float),
+        "CONTEXT_CRITICAL_THRESHOLD": ("critical_threshold", float),
+        "CONTEXT_MAX_TOOL_OUTPUT": ("max_tool_output_length", int),
+        "CONTEXT_MAX_ASSISTANT_OUTPUT": ("max_assistant_output_length", int),
+        "CONTEXT_KEEP_RECENT": ("keep_recent", int),
+        "CONTEXT_MIN_KEEP_RECENT": ("min_keep_recent", int),
+        "CONTEXT_MIN_SUMMARY_TOKENS": ("min_summary_tokens", int),
+        "CONTEXT_MIN_SUMMARY_INTERVAL": ("min_summary_interval", int),
+    }
+    import logging as _logging
+    _cfg_logger = _logging.getLogger(__name__)
+    for env_var, (attr_name, cast_fn) in _context_env_map.items():
+        raw = os.getenv(env_var)
+        if raw is not None:
+            try:
+                setattr(config.context, attr_name, cast_fn(raw))
+            except (ValueError, TypeError):
+                _cfg_logger.warning(
+                    "Ignoring invalid env var %s=%r (expected %s)",
+                    env_var, raw, cast_fn.__name__,
+                )
+
     # Validate
     config.validate()
     
@@ -543,6 +680,45 @@ tool_safety:
   default_timeout: 120          # Default tool execution timeout in seconds
   default_max_output: 50000     # Default max output chars (~12K tokens)
   subprocess_timeout: 55        # Subprocess timeout for CLI tools (grep, fd, etc.)
+
+# Context Window & Compression Configuration
+context:
+  # Token budget
+  context_window_tokens: 128000    # Total context window size
+  reserve_tokens: 4096             # Reserved for LLM response
+
+  # Compression thresholds (utilization ratios, 0.0 - 1.0)
+  soft_threshold: 0.7              # Start aggressive truncation
+  warning_threshold: 0.8           # Trigger LLM summary
+  critical_threshold: 0.95         # Trigger emergency compression
+
+  # Truncation limits (characters)
+  max_tool_output_length: 1000     # Tool output truncation threshold
+  max_assistant_output_length: 3000 # Assistant message truncation (0=disabled)
+
+  # Recent message window
+  keep_recent: 4                   # Default recent messages to keep
+  min_keep_recent: 2               # Minimum (dynamic adjustment floor)
+
+  # LLM summary controls
+  min_summary_tokens: 2000         # Min old message tokens to trigger summary
+  min_summary_interval: 6          # Min new messages between summaries
+  summary_threshold: 20            # Message count threshold
+
+  # Importance scoring
+  low_importance_threshold: 0.3    # Below: aggressive truncation
+  high_importance_threshold: 0.7   # Above: lenient truncation
+
+  # Prune settings
+  prune_minimum_tokens: 5000       # Min tokens to consider pruning
+  prune_protect_window: 8          # Recent messages protected from prune
+  prune_preview_chars: 200         # Head/tail chars kept after prune
+
+  # Archive & recall
+  recall_max_tokens: 4000          # Default max tokens for recall tool
+
+  # Adaptive behavior
+  frequent_summary_warning_count: 3 # Consecutive summaries before warning
 
 # System prompt
 system_prompt: |

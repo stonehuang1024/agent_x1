@@ -66,6 +66,7 @@ class Message:
     name: Optional[str] = None
     token_count: int = 0
     importance: float = 0.5
+    compression_state: str = "original"
     cache_control: Optional[Dict[str, str]] = None
 
     @classmethod
@@ -110,6 +111,8 @@ class Message:
             result["token_count"] = self.token_count
         if self.importance != 0.5:
             result["importance"] = self.importance
+        if self.compression_state != "original":
+            result["compression_state"] = self.compression_state
         if self.cache_control is not None:
             result["cache_control"] = self.cache_control
             
@@ -134,5 +137,6 @@ class Message:
             name=data.get("name"),
             token_count=data.get("token_count", 0),
             importance=data.get("importance", 0.5),
+            compression_state=data.get("compression_state", "original"),
             cache_control=data.get("cache_control")
         )

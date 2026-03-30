@@ -26,8 +26,10 @@ from src.session.session_manager import SessionManager
 from src.memory.memory_controller import MemoryController
 from src.prompt.prompt_provider import PromptProvider
 
-from .context_window import ContextWindow, ContextBudget
+from .context_window import ContextWindow, ContextBudget, CompressionLevel
 from .context_compressor import ContextCompressor
+from .compression_archive import CompressionArchive
+from .importance_scorer import ImportanceScorer
 from .system_reminder import SystemReminderBuilder
 
 logger = logging.getLogger(__name__)
@@ -60,15 +62,47 @@ class ContextAssembler:
         max_tokens: int = 128000,
         event_bus: Optional[EventBus] = None,
         project_path: Optional[Path] = None,
+        *,
+        context_config: Optional["object"] = None,  # ContextConfig
     ):
         self.session_manager = session_manager
         self.memory_controller = memory_controller
         self.prompt_provider = prompt_provider
-        self.compressor = compressor or ContextCompressor()
-        self.window = ContextWindow(ContextBudget(max_tokens=max_tokens))
         self.event_bus = event_bus
         self.project_path = project_path
         self._reminder_builder = SystemReminderBuilder()
+        self._importance_scorer = ImportanceScorer()
+
+        # Build from ContextConfig if provided, else backward-compatible
+        if context_config is not None:
+            from src.core.config import ContextConfig as _CC
+            if not isinstance(context_config, _CC):
+                raise TypeError(f"Expected ContextConfig, got {type(context_config)}")
+            self._context_config = context_config
+            self.compressor = compressor or ContextCompressor(context_config=context_config)
+            self.window = ContextWindow(context_config=context_config)
+            session_dir = None
+            if session_manager and session_manager.active_session:
+                s = session_manager.active_session
+                if hasattr(s, 'session_dir') and s.session_dir:
+                    session_dir = Path(s.session_dir)
+            self._archive = CompressionArchive(
+                session_dir=session_dir,
+                recall_max_tokens=context_config.recall_max_tokens,
+            )
+            self._frequent_summary_warning_count = context_config.frequent_summary_warning_count
+        else:
+            from src.core.config import ContextConfig as _CC
+            # Backward-compatible: adjust reserve_tokens if max_tokens is small
+            reserve = min(4096, max(1, max_tokens // 4))
+            self._context_config = _CC(context_window_tokens=max_tokens, reserve_tokens=reserve)
+            self.compressor = compressor or ContextCompressor()
+            self.window = ContextWindow(ContextBudget(max_tokens=max_tokens))
+            self._archive = CompressionArchive()
+            self._frequent_summary_warning_count = 3
+
+        self._consecutive_summary_count: int = 0
+
         # Cached static prefix (layers 1-5) to avoid rebuilding every iteration
         self._static_prefix: List[Message] = []
         self._static_tokens: int = 0
@@ -203,152 +237,238 @@ class ContextAssembler:
         self,
         turn_messages: List[Message],
     ) -> List[Message]:
-        """Reassemble context for subsequent LLM calls within the same turn.
+        """Reassemble context using the 5-Phase compression pipeline.
 
-        Instead of rebuilding all 8 layers from scratch, this method:
-        1. Reuses the cached static prefix (layers 1-5).
-        2. **Proactively** truncates large tool outputs in older messages
-           to eliminate redundant token usage.
-        3. Checks token budget and applies full compression if still needed.
-
-        The key optimization: older tool_result messages (beyond the recent
-        window) have their content truncated via head+tail preservation.
-        This prevents the pattern where a 48KB PDF result is sent verbatim
-        on every subsequent LLM call.
-
-        Args:
-            turn_messages: The accumulated messages for the current turn
-                (user message, assistant responses, tool results).
-
-        Returns:
-            Ordered message list: static prefix → turn messages.
+        Phase 1: Prune — pre-trim oversized tool outputs
+        Phase 2: Truncate — head+tail truncation of old messages
+        Phase 3: Evaluate — check utilization, decide next steps
+        Phase 4: LLM Summary — semantic compression (conditional)
+        Phase 5: Emergency — Level 1/2/3 compression (conditional)
         """
         self.window.reset()
+        self.compressor.reset_rebuild_state()
 
         # Account for static prefix tokens
         if self._static_prefix:
             self.window.add(self._static_prefix)
 
-        # --- Proactive compression of old tool outputs ---
-        # Always truncate large tool outputs in older messages to avoid
-        # sending e.g. a 48KB PDF result on every subsequent LLM call.
-        # Keep the most recent `keep_recent` messages intact so the LLM
-        # has full context for the current step.
-        optimized = self._truncate_old_tool_outputs(turn_messages)
-
-        # Estimate dynamic portion
-        dynamic_tokens = self.window.estimate_tokens(optimized)
+        optimized = list(turn_messages)
         original_tokens = self.window.estimate_tokens(turn_messages)
 
-        if dynamic_tokens < original_tokens:
-            logger.info(
-                f"[rebuild] Truncated old tool outputs: "
-                f"{original_tokens} → {dynamic_tokens} tokens "
-                f"(saved {original_tokens - dynamic_tokens})"
-            )
-
-        total_needed = self._static_tokens + dynamic_tokens
-
+        # ---- Phase 1: Prune ----
+        tokens_before_p1 = self.window.estimate_tokens(optimized)
+        keep_recent = self.window.get_dynamic_keep_recent()
+        optimized = self.compressor._prune_large_outputs(
+            optimized, keep_recent, self._archive
+        )
+        tokens_after_p1 = self.window.estimate_tokens(optimized)
         logger.debug(
-            f"[rebuild] static={self._static_tokens} tokens, "
-            f"dynamic={dynamic_tokens} tokens, "
-            f"total={total_needed}, "
-            f"budget={self.window.budget.available_for_context}"
+            "[rebuild] Phase 1 Prune: %d -> %d tokens", tokens_before_p1, tokens_after_p1
         )
 
-        # If within budget after proactive truncation, combine
-        if self.window.fits(optimized):
-            self.window.add(optimized)
+        # ---- Phase 2: Truncate (always runs — proactive optimization) ----
+        # Determine compression level for aggressive truncation thresholds
+        self.window.add(optimized)
+        compression_level = self.window.compression_level()
+        self.window.remove(1)
+
+        tokens_before_p2 = self.window.estimate_tokens(optimized)
+        optimized = self._truncate_old_tool_outputs(optimized, compression_level)
+        tokens_after_p2 = self.window.estimate_tokens(optimized)
+        logger.debug(
+            "[rebuild] Phase 2 Truncate: %d -> %d tokens", tokens_before_p2, tokens_after_p2
+        )
+
+        # Re-evaluate after Phase 2
+        self.window.add(optimized)
+        util_after_p2 = self.window.utilization()
+        if util_after_p2 < self.window.budget.warning_threshold:
             result = self._static_prefix + optimized
+            self._emit_pipeline_event(original_tokens, optimized, {
+                "phase1_saved": tokens_before_p1 - tokens_after_p1,
+                "phase2_saved": tokens_before_p2 - tokens_after_p2,
+            })
+            return result
+        self.window.remove(1)
+
+        # ---- Phase 3: Evaluate ----
+        logger.debug(
+            "[rebuild] Phase 3 Evaluate: utilization=%.1f%%, warning=%.1f%%",
+            util_after_p2 * 100, self.window.budget.warning_threshold * 100,
+        )
+
+        # ---- Phase 4: LLM Summary (conditional) ----
+        tokens_before_p4 = self.window.estimate_tokens(optimized)
+        optimized = self.compressor._llm_summarize(
+            optimized,
+            keep_recent=keep_recent,
+            archive=self._archive,
+            utilization=util_after_p2,
+            warning_threshold=self.window.budget.warning_threshold,
+        )
+        tokens_after_p4 = self.window.estimate_tokens(optimized)
+
+        if tokens_after_p4 < tokens_before_p4:
+            self._consecutive_summary_count += 1
+            logger.debug(
+                "[rebuild] Phase 4 LLM Summary: %d -> %d tokens",
+                tokens_before_p4, tokens_after_p4,
+            )
+            if self._consecutive_summary_count >= self._frequent_summary_warning_count:
+                logger.warning(
+                    "Frequent LLM summarization detected (%d consecutive). "
+                    "Consider increasing max_tokens budget or reducing task complexity.",
+                    self._consecutive_summary_count,
+                )
         else:
-            # Still over budget — apply full compression pipeline
-            logger.info(
-                f"[rebuild] Compressing turn messages: "
-                f"{dynamic_tokens} tokens exceeds remaining "
-                f"{self.window.remaining()} tokens"
-            )
-            compressed, _ = self.compressor.compress_history(
-                optimized,
-                target_tokens=self.window.remaining(),
-            )
-            self.window.add(compressed)
-            result = self._static_prefix + compressed
+            self._consecutive_summary_count = 0
+            logger.debug("[rebuild] Phase 4 LLM Summary: skipped")
 
-            compressed_tokens = self.window.estimate_tokens(compressed)
-            self._emit_compressed_event(dynamic_tokens, compressed)
-            logger.info(
-                f"[rebuild] Compressed: {dynamic_tokens} → {compressed_tokens} tokens"
-            )
+        # Re-evaluate after Phase 4
+        self.window.add(optimized)
+        util_after_p4 = self.window.utilization()
 
-        return result
+        if util_after_p4 < self.window.budget.critical_threshold:
+            result = self._static_prefix + optimized
+            self._emit_pipeline_event(original_tokens, optimized, {
+                "phase1_saved": tokens_before_p1 - tokens_after_p1,
+                "phase2_saved": tokens_before_p2 - tokens_after_p2,
+                "phase4_saved": tokens_before_p4 - tokens_after_p4,
+            })
+            return result
+        self.window.remove(1)
+
+        # ---- Phase 5: Emergency ----
+        logger.info(
+            "[rebuild] Phase 5 Emergency: utilization=%.1f%% >= critical=%.1f%%",
+            util_after_p4 * 100, self.window.budget.critical_threshold * 100,
+        )
+        compressed, _ = self.compressor.compress_history(
+            optimized,
+            target_tokens=self.window.remaining(),
+        )
+        self.window.add(compressed)
+        tokens_after_p5 = self.window.estimate_tokens(compressed)
+
+        self._emit_compressed_event(tokens_before_p4, compressed)
+        self._emit_pipeline_event(original_tokens, compressed, {
+            "phase1_saved": tokens_before_p1 - tokens_after_p1,
+            "phase2_saved": tokens_before_p2 - tokens_after_p2,
+            "phase4_saved": tokens_before_p4 - tokens_after_p4,
+            "phase5_saved": self.window.estimate_tokens(optimized) - tokens_after_p5,
+        })
+
+        logger.info(
+            "[rebuild] Pipeline complete: %d -> %d tokens",
+            original_tokens, tokens_after_p5,
+        )
+
+        return self._static_prefix + compressed
 
     def _truncate_old_tool_outputs(
         self,
         turn_messages: List[Message],
+        compression_level: CompressionLevel = CompressionLevel.NONE,
     ) -> List[Message]:
-        """Truncate large tool outputs in older messages.
+        """Truncate large tool AND assistant outputs in older messages.
 
-        Strategy:
-        - The most recent ``compressor.keep_recent`` messages are kept
-          intact (the LLM needs full context for the current step).
-        - Older messages with role='tool' or containing tool_result have
-          their content truncated using head+tail preservation.
-        - Assistant messages and the original user message are kept as-is
-          (they are typically small).
-
-        This is applied **proactively** on every rebuild(), not just when
-        the token budget is exceeded.  It mutates nothing — returns a new
-        list with truncated copies where needed.
+        Enhanced with:
+        - Assistant message truncation (Task 5)
+        - Importance-score-driven thresholds (Task 5)
+        - SOFT-level aggressive truncation (Task 5)
+        - compression_state tracking
         """
         n = len(turn_messages)
         keep_recent = self.compressor.keep_recent
 
-        # If few enough messages, no truncation needed
         if n <= keep_recent:
             return list(turn_messages)
 
         boundary = n - keep_recent
         result: List[Message] = []
 
+        # SOFT level: halve truncation thresholds
+        tool_max = self.compressor.max_tool_output_length
+        asst_max = self.compressor.max_assistant_output_length
+        if compression_level == CompressionLevel.SOFT:
+            tool_max = max(1, tool_max // 2)
+            asst_max = max(1, asst_max // 2) if asst_max > 0 else asst_max
+
         for i, msg in enumerate(turn_messages):
             if i < boundary:
-                # Old message — truncate if it's a tool result with large content
-                result.append(self._maybe_truncate_tool_msg(msg))
+                result.append(self._maybe_truncate_msg(msg, i, boundary, tool_max, asst_max))
             else:
-                # Recent message — keep intact
                 result.append(msg)
 
         return result
 
-    def _maybe_truncate_tool_msg(self, msg: Message) -> Message:
-        """Truncate a tool-result message if its content is large.
-
-        Uses the compressor's ``max_tool_output_length`` as the threshold.
-        Non-tool messages and small tool messages are returned as-is.
-        """
+    def _maybe_truncate_msg(
+        self,
+        msg: Message,
+        index: int,
+        boundary: int,
+        tool_max_len: int,
+        asst_max_len: int,
+    ) -> Message:
+        """Truncate a tool or assistant message based on importance score."""
         content = msg.content or ""
-        max_len = self.compressor.max_tool_output_length
 
-        # Only truncate tool-role messages or messages with tool_call_id
+        # Skip already-summarized messages
+        if getattr(msg, "compression_state", "original") == "summarized":
+            return msg
+
+        # Determine if this is a truncatable message and which threshold to use
         is_tool_msg = (
             msg.role == Role.TOOL.value
             or msg.tool_call_id is not None
-            or (msg.role == Role.USER.value and isinstance(msg.content, str)
-                and "tool_result" in msg.content[:50])
+        )
+        is_plain_assistant = (
+            msg.role == Role.ASSISTANT.value
+            and msg.tool_calls is None
         )
 
-        if not is_tool_msg or len(content) <= max_len:
+        if is_tool_msg:
+            base_max = tool_max_len
+        elif is_plain_assistant and asst_max_len > 0:
+            base_max = asst_max_len
+        else:
+            return msg
+
+        # Importance-driven threshold adjustment
+        turns_ago = boundary - index
+        importance = self._importance_scorer.score(msg, turns_ago)
+        if importance > self.compressor.high_importance_threshold:
+            effective_max = base_max * 2
+        elif importance < self.compressor.low_importance_threshold:
+            effective_max = max(1, base_max // 2)
+        else:
+            effective_max = base_max
+
+        if len(content) <= effective_max:
             return msg
 
         # Head + tail truncation
-        half = max_len // 2
-        truncated_chars = len(content) - max_len
+        half = effective_max // 2
+        truncated_chars = len(content) - effective_max
+
+        # Skip truncation if the marker text would negate the savings
+        # (marker is ~60 chars; only truncate if we save at least 100 chars)
+        if truncated_chars < 100:
+            return msg
+
         head = content[:half]
         tail = content[-half:]
+
+        msg_type = "tool output" if is_tool_msg else "assistant response"
         truncated_content = (
             f"{head}\n"
-            f"[... {truncated_chars} chars truncated for context efficiency ...]\n"
+            f"[... {truncated_chars} chars truncated from old {msg_type} ...]\n"
             f"{tail}"
+        )
+
+        logger.debug(
+            "[Truncate] msg %d: importance=%.2f, threshold=%d, truncated %d chars",
+            index, importance, effective_max, truncated_chars,
         )
 
         return Message(
@@ -359,6 +479,7 @@ class ContextAssembler:
             name=msg.name,
             token_count=msg.token_count,
             importance=msg.importance,
+            compression_state="truncated",
         )
 
     # ------------------------------------------------------------------
@@ -530,7 +651,9 @@ class ContextAssembler:
     ) -> None:
         """Layer 8: User Message with system-reminder injection."""
         enriched_input = self._reminder_builder.build(
-            user_input, project_path=self.project_path
+            user_input,
+            project_path=self.project_path,
+            has_compression=self._archive.has_archives(),
         )
         layers.append(ContextLayer(
             name="user_message",
@@ -556,6 +679,13 @@ class ContextAssembler:
         - **tool**: ``tool_call_id`` and ``name`` must be present so the
           engine can emit ``tool_result`` blocks with the correct
           ``tool_use_id``.
+
+        **Tool-call pairing integrity**: The loaded history must never
+        contain a ``tool_result`` without its corresponding
+        ``assistant(tool_use)`` message.  If the ``recent_n`` boundary
+        falls in the middle of a tool-call group, we extend the window
+        backwards to include the assistant message that initiated the
+        tool calls.
         """
         try:
             session = self.session_manager.active_session
@@ -563,6 +693,7 @@ class ContextAssembler:
                 return []
 
             turns = self.session_manager.get_history(recent_n=10)
+            turns = self._ensure_tool_call_pairing(turns)
             messages = []
             for turn in turns:
                 if turn.role == "assistant" and turn.tool_calls:
@@ -592,6 +723,50 @@ class ContextAssembler:
         except Exception as e:
             logger.debug(f"Failed to load history: {e}")
             return []
+
+    def _ensure_tool_call_pairing(self, turns) -> list:
+        """Ensure tool_result turns have their corresponding assistant(tool_use) turn.
+
+        If the first turn(s) in the loaded window are ``tool`` messages
+        whose ``tool_call_id`` has no matching ``assistant(tool_calls)``
+        in the window, those orphaned tool messages are dropped.
+
+        This prevents the Anthropic API 400 error:
+        ``"tool_call_id <id> is not found"``
+        which occurs when a ``tool_result`` block references a
+        ``tool_use_id`` that doesn't exist in the conversation.
+        """
+        if not turns:
+            return turns
+
+        # Collect all tool_use ids from assistant messages in the window
+        available_tool_use_ids: set = set()
+        for turn in turns:
+            if turn.role == "assistant" and turn.tool_calls:
+                for tc in turn.tool_calls:
+                    tc_id = tc.get("id", "")
+                    if tc_id:
+                        available_tool_use_ids.add(tc_id)
+
+        # Drop orphaned tool messages (tool_call_id not in any assistant's tool_calls)
+        result = []
+        dropped_count = 0
+        for turn in turns:
+            if turn.role == "tool":
+                tc_id = turn.tool_call_id
+                if not tc_id or tc_id not in available_tool_use_ids:
+                    dropped_count += 1
+                    continue
+            result.append(turn)
+
+        if dropped_count > 0:
+            logger.warning(
+                "[_load_history] Dropped %d orphaned tool_result turn(s) "
+                "whose assistant(tool_use) was outside the history window",
+                dropped_count,
+            )
+
+        return result
 
     # ------------------------------------------------------------------
     # Compression helpers
@@ -696,3 +871,25 @@ class ContextAssembler:
             )
         except Exception as e:
             logger.debug(f"Failed to emit CONTEXT_COMPRESSED: {e}")
+
+    def _emit_pipeline_event(
+        self,
+        original_tokens: int,
+        messages_after: List[Message],
+        phase_stats: Dict[str, Any],
+    ) -> None:
+        """Emit COMPRESSION_PIPELINE_COMPLETED event."""
+        if not self.event_bus:
+            return
+        tokens_after = self.window.estimate_tokens(messages_after)
+        try:
+            self.event_bus.emit(
+                AgentEvent.COMPRESSION_PIPELINE_COMPLETED,
+                original_tokens=original_tokens,
+                final_tokens=tokens_after,
+                compression_ratio=tokens_after / max(original_tokens, 1),
+                phase_stats=phase_stats,
+                archive_count=self._archive.get_archive_count(),
+            )
+        except Exception as e:
+            logger.debug(f"Failed to emit COMPRESSION_PIPELINE_COMPLETED: {e}")

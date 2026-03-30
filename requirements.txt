@@ -3,6 +3,12 @@
 # HTTP client for API requests
 requests>=2.31.0
 
+# SSL/TLS robustness (OpenSSL 3.6+ required for full compatibility)
+urllib3>=2.6.0
+certifi>=2024.0.0
+cryptography>=42.0.0
+pyopenssl>=24.0.0
+
 # Configuration file parsing
 pyyaml>=6.0.1
 
@@ -26,6 +32,9 @@ seaborn>=0.12.0
 
 # Web search (Exa AI)
 exa-py>=2.9.0
+
+# Google search (SerpAPI)
+google-search-results>=2.4.2
 
 # Web scraping
 beautifulsoup4>=4.12.0

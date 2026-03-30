@@ -156,22 +156,23 @@ class TestConvertToAnthropicFormat:
             f"tool_use_id should be 'call_123', got {tool_result['tool_use_id']!r}"
         )
 
-    def test_tool_message_without_tool_call_id_produces_none(self, engine):
-        """Tool messages with tool_call_id=None produce tool_use_id=None.
-        This is the bug scenario — _load_history used to drop tool_call_id,
-        resulting in None here, which Anthropic API rejects with 400."""
+    def test_tool_message_without_tool_call_id_is_skipped(self, engine):
+        """Tool messages with tool_call_id=None are skipped during conversion.
+        Bug scenario: _load_history used to drop tool_call_id, resulting in
+        None tool_use_id, which Anthropic API rejects with 400.
+        Fix: _convert_to_anthropic_format now skips such messages to prevent
+        the 400 error, and _load_history/_ensure_tool_call_pairing drops
+        orphaned tool messages upstream."""
         messages = [
             Message(role=Role.TOOL.value, content="result", tool_call_id=None),
         ]
 
         result = engine._convert_to_anthropic_format(messages)
 
-        assert len(result) == 1
-        tool_result = result[0]["content"][0]
-        # This documents the current behavior — tool_use_id will be None
-        # The fix is in _load_history, not here
-        assert tool_result["tool_use_id"] is None, (
-            "Expected None when tool_call_id is not set"
+        assert len(result) == 0, (
+            f"Expected tool message with None tool_call_id to be skipped, "
+            f"but got {len(result)} message(s). "
+            "Sending tool_result with tool_use_id=None causes Anthropic API 400."
         )
 
     def test_assistant_tool_use_ids_match_tool_result_ids(self, engine):

@@ -304,21 +304,28 @@ class TestPaperDetailsTool(unittest.TestCase):
 class TestDownloadTool(unittest.TestCase):
     """Test download_arxiv_pdf function."""
 
-    @patch('src.tools.arxiv_tools.urllib.request.urlopen')
-    @patch('src.tools.arxiv_tools.urllib.request.Request')
-    def test_download_success(self, mock_request_class, mock_urlopen):
+    @patch('src.tools.arxiv_tools.http_download')
+    def test_download_success(self, mock_http_download):
         """Test successful PDF download."""
-        # Mock response — read() must return data once, then b'' to
-        # terminate the chunked-download while-loop.  The old mock
-        # returned data *every* call, creating an infinite loop that
-        # consumed 37 GB of memory/disk.
         pdf_bytes = b'%PDF-1.4 fake content here'
-        mock_response = MagicMock()
-        mock_response.read.side_effect = [pdf_bytes, b'']
-        mock_response.headers = {'Content-Length': str(len(pdf_bytes))}
-        mock_urlopen.return_value.__enter__.return_value = mock_response
         
         with tempfile.TemporaryDirectory() as tmpdir:
+            file_path = str(Path(tmpdir) / '2401.12345.pdf')
+            
+            def fake_download(url, output_path, headers=None, timeout=120):
+                # Write fake PDF to the output path
+                Path(output_path).write_bytes(pdf_bytes)
+                return {
+                    "success": True,
+                    "file_path": output_path,
+                    "size_bytes": len(pdf_bytes),
+                    "status_code": 200,
+                    "error": "",
+                    "method": "requests",
+                }
+            
+            mock_http_download.side_effect = fake_download
+            
             result_json = download_arxiv_pdf("2401.12345", output_dir=tmpdir)
             result = json.loads(result_json)
             
@@ -346,19 +353,15 @@ class TestDownloadTool(unittest.TestCase):
             self.assertTrue(result['already_exists'])
             self.assertEqual(result['size_bytes'], len(b'Existing content'))
 
-    @patch('src.tools.arxiv_tools.urllib.request.urlopen')
-    @patch('src.tools.arxiv_tools.urllib.request.Request')
-    def test_download_404(self, mock_request_class, mock_urlopen):
+    @patch('src.tools.arxiv_tools.http_download')
+    def test_download_404(self, mock_http_download):
         """Test download when paper not found."""
-        from urllib.error import HTTPError
-        
-        mock_urlopen.side_effect = HTTPError(
-            url='https://arxiv.org/pdf/9999.99999.pdf',
-            code=404,
-            msg='Not Found',
-            hdrs={},
-            fp=None
-        )
+        mock_http_download.return_value = {
+            "success": False,
+            "status_code": 404,
+            "error": "HTTP 404",
+            "method": "requests",
+        }
         
         with tempfile.TemporaryDirectory() as tmpdir:
             result_json = download_arxiv_pdf("9999.99999", output_dir=tmpdir)
@@ -367,17 +370,23 @@ class TestDownloadTool(unittest.TestCase):
             self.assertFalse(result['success'])
             self.assertIn('not found', result['error'].lower())
 
-    @patch('src.tools.arxiv_tools.urllib.request.urlopen')
-    @patch('src.tools.arxiv_tools.urllib.request.Request')
-    def test_download_custom_filename(self, mock_request_class, mock_urlopen):
+    @patch('src.tools.arxiv_tools.http_download')
+    def test_download_custom_filename(self, mock_http_download):
         """Test download with custom filename."""
-        # Must mock urlopen — without it, the test makes a real HTTP
-        # request to arxiv.org, which can hang or fail unpredictably.
         pdf_bytes = b'%PDF-1.4 custom filename test'
-        mock_response = MagicMock()
-        mock_response.read.side_effect = [pdf_bytes, b'']
-        mock_response.headers = {'Content-Length': str(len(pdf_bytes))}
-        mock_urlopen.return_value.__enter__.return_value = mock_response
+        
+        def fake_download(url, output_path, headers=None, timeout=120):
+            Path(output_path).write_bytes(pdf_bytes)
+            return {
+                "success": True,
+                "file_path": output_path,
+                "size_bytes": len(pdf_bytes),
+                "status_code": 200,
+                "error": "",
+                "method": "requests",
+            }
+        
+        mock_http_download.side_effect = fake_download
         
         with tempfile.TemporaryDirectory() as tmpdir:
             result_json = download_arxiv_pdf(
@@ -466,22 +475,24 @@ class TestURLConstruction(unittest.TestCase):
         self.assertEqual(ARXIV_API_URL, "https://export.arxiv.org/api/query")
         self.assertEqual(ARXIV_PDF_URL, "https://arxiv.org/pdf")
 
-    @patch('src.tools.arxiv_tools.urllib.request.urlopen')
-    @patch('src.tools.arxiv_tools.urllib.request.Request')
-    def test_request_headers(self, mock_request_class, mock_urlopen):
+    @patch('src.tools.arxiv_tools.urllib_get')
+    def test_request_headers(self, mock_urllib_get):
         """Test request has proper headers."""
-        mock_response = MagicMock()
-        mock_response.read.return_value = b'<feed/>'
-        mock_urlopen.return_value.__enter__.return_value = mock_response
+        mock_urllib_get.return_value = {
+            "success": True,
+            "status_code": 200,
+            "data": "<feed/>",
+            "error": "",
+            "method": "urllib",
+        }
         
         from src.tools.arxiv_tools import _make_api_request
         _make_api_request(search_query="test", max_results=1)
         
-        # Verify Request was created with headers
-        mock_request_class.assert_called_once()
-        call_args = mock_request_class.call_args
-        self.assertIn('headers', call_args.kwargs)
-        headers = call_args.kwargs['headers']
+        # Verify urllib_get was called with headers
+        mock_urllib_get.assert_called_once()
+        call_args = mock_urllib_get.call_args
+        headers = call_args.kwargs.get('headers', call_args[1].get('headers', {}))
         self.assertIn('User-Agent', headers)
 
 

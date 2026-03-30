@@ -229,11 +229,21 @@ class AnthropicEngine(BaseEngine):
                 })
             
             elif msg.role == Role.TOOL.value:
+                tool_use_id = msg.tool_call_id
+                if not tool_use_id:
+                    # Skip tool_result with missing tool_use_id — it would
+                    # cause a 400 error from the API.
+                    logger.warning(
+                        "[Engine] Skipping tool_result with missing tool_use_id "
+                        "(content_preview=%s)",
+                        (msg.content or "")[:80],
+                    )
+                    continue
                 anthropic_msgs.append({
                     "role": "user",
                     "content": [{
                         "type": "tool_result",
-                        "tool_use_id": msg.tool_call_id,
+                        "tool_use_id": tool_use_id,
                         "content": msg.content
                     }]
                 })

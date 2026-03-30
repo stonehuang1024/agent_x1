@@ -4,9 +4,13 @@ import json
 import logging
 import math
 from dataclasses import dataclass
-from typing import List, Optional, Callable
+from enum import Enum
+from typing import List, Optional, Callable, TYPE_CHECKING
 
 from src.core.models import Message
+
+if TYPE_CHECKING:
+    from src.core.config import ContextConfig
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +42,14 @@ def _try_tiktoken():
 # Budget configuration
 # ---------------------------------------------------------------------------
 
+class CompressionLevel(Enum):
+    """Compression urgency level based on context utilization."""
+    NONE = "none"          # utilization < soft_threshold
+    SOFT = "soft"          # soft_threshold <= utilization < warning_threshold
+    WARNING = "warning"    # warning_threshold <= utilization < critical_threshold
+    CRITICAL = "critical"  # utilization >= critical_threshold
+
+
 @dataclass
 class ContextBudget:
     """Token budget configuration.
@@ -47,12 +59,28 @@ class ContextBudget:
     """
     max_tokens: int = 64000
     reserve_tokens: int = 4096
+    soft_threshold: float = 0.7
     warning_threshold: float = 0.8
     critical_threshold: float = 0.95
+    keep_recent: int = 4
+    min_keep_recent: int = 2
     
     @property
     def available_for_context(self) -> int:
         return self.max_tokens - self.reserve_tokens
+
+    @classmethod
+    def from_context_config(cls, ctx_config: "ContextConfig") -> "ContextBudget":
+        """Build a ContextBudget from a ContextConfig object."""
+        return cls(
+            max_tokens=ctx_config.context_window_tokens,
+            reserve_tokens=ctx_config.reserve_tokens,
+            soft_threshold=ctx_config.soft_threshold,
+            warning_threshold=ctx_config.warning_threshold,
+            critical_threshold=ctx_config.critical_threshold,
+            keep_recent=ctx_config.keep_recent,
+            min_keep_recent=ctx_config.min_keep_recent,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -78,8 +106,18 @@ class ContextWindow:
     - Optionally uses tiktoken for precise counting
     """
     
-    def __init__(self, budget: ContextBudget):
-        self.budget = budget
+    def __init__(
+        self,
+        budget: Optional[ContextBudget] = None,
+        *,
+        context_config: Optional["ContextConfig"] = None,
+    ):
+        if context_config is not None:
+            self.budget = ContextBudget.from_context_config(context_config)
+        elif budget is not None:
+            self.budget = budget
+        else:
+            self.budget = ContextBudget()
         self._current_usage = 0
         self._message_counts: List[int] = []
     
@@ -179,6 +217,31 @@ class ContextWindow:
     def should_compress(self) -> bool:
         """True when utilization exceeds critical threshold."""
         return self.utilization() >= self.budget.critical_threshold
+
+    def compression_level(self) -> CompressionLevel:
+        """Return the current compression urgency level."""
+        util = self.utilization()
+        if util >= self.budget.critical_threshold:
+            return CompressionLevel.CRITICAL
+        if util >= self.budget.warning_threshold:
+            return CompressionLevel.WARNING
+        if util >= self.budget.soft_threshold:
+            return CompressionLevel.SOFT
+        return CompressionLevel.NONE
+
+    def get_dynamic_keep_recent(self) -> int:
+        """Return keep_recent adjusted for current compression pressure."""
+        level = self.compression_level()
+        default = self.budget.keep_recent
+        if level in (CompressionLevel.WARNING, CompressionLevel.CRITICAL):
+            adjusted = self.budget.min_keep_recent
+            if adjusted != default:
+                logger.info(
+                    "Dynamic keep_recent adjusted: %d -> %d (level=%s)",
+                    default, adjusted, level.value,
+                )
+            return adjusted
+        return default
     
     def add(self, messages: List[Message]) -> bool:
         """Add messages to the window, updating token counts.

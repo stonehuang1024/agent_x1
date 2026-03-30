@@ -40,6 +40,45 @@ tool_safety:
   default_max_output: 50000     # Default max output chars (~12K tokens)
   subprocess_timeout: 55        # Subprocess timeout for CLI tools (grep, fd, etc.)
 
+# Context Window & Compression Configuration
+context:
+  # Token budget
+  context_window_tokens: 128000    # Total context window size
+  reserve_tokens: 4096             # Reserved for LLM response
+
+  # Compression thresholds (utilization ratios, 0.0 - 1.0)
+  soft_threshold: 0.7              # Start aggressive truncation
+  warning_threshold: 0.8           # Trigger LLM summary
+  critical_threshold: 0.95         # Trigger emergency compression
+
+  # Truncation limits (characters)
+  max_tool_output_length: 1000     # Tool output truncation threshold
+  max_assistant_output_length: 3000 # Assistant message truncation (0=disabled)
+
+  # Recent message window
+  keep_recent: 4                   # Default recent messages to keep
+  min_keep_recent: 2               # Minimum (dynamic adjustment floor)
+
+  # LLM summary controls
+  min_summary_tokens: 2000         # Min old message tokens to trigger summary
+  min_summary_interval: 6          # Min new messages between summaries
+  summary_threshold: 20            # Message count threshold
+
+  # Importance scoring
+  low_importance_threshold: 0.3    # Below: aggressive truncation
+  high_importance_threshold: 0.7   # Above: lenient truncation
+
+  # Prune settings
+  prune_minimum_tokens: 5000       # Min tokens to consider pruning
+  prune_protect_window: 8          # Recent messages protected from prune
+  prune_preview_chars: 200         # Head/tail chars kept after prune
+
+  # Archive & recall
+  recall_max_tokens: 4000          # Default max tokens for recall tool
+
+  # Adaptive behavior
+  frequent_summary_warning_count: 3 # Consecutive summaries before warning
+
 # System prompt
 system_prompt: |
   You are a helpful AI assistant with access to tools.

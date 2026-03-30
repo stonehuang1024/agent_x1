@@ -11,9 +11,13 @@ Also provides smart tool-output truncation that preserves head + tail.
 import logging
 import math
 import re
-from typing import List, Optional, Tuple, Callable
+from typing import List, Optional, Tuple, Callable, TYPE_CHECKING
 
 from src.core.models import Message, Role
+
+if TYPE_CHECKING:
+    from src.context.compression_archive import CompressionArchive
+    from src.core.config import ContextConfig
 
 logger = logging.getLogger(__name__)
 
@@ -47,12 +51,53 @@ class ContextCompressor:
         keep_recent: int = 4,
         token_estimator: Optional[Callable[[List[Message]], int]] = None,
         low_importance_threshold: float = 0.4,
+        *,
+        # Task 4: Prune parameters
+        prune_minimum_tokens: int = 5000,
+        prune_protect_window: int = 8,
+        prune_preview_chars: int = 200,
+        # Task 5: Enhanced truncation
+        max_assistant_output_length: int = 3000,
+        high_importance_threshold: float = 0.7,
+        # Task 6: LLM summary
+        llm_caller: Optional[Callable] = None,
+        min_summary_tokens: int = 2000,
+        min_summary_interval: int = 6,
+        # Config-based init
+        context_config: Optional["ContextConfig"] = None,
     ):
-        self.max_tool_output_length = max_tool_output_length
-        self.summary_threshold = summary_threshold
-        self.keep_recent = keep_recent
+        # If context_config is provided, use it for all parameters
+        if context_config is not None:
+            self.max_tool_output_length = context_config.max_tool_output_length
+            self.summary_threshold = context_config.summary_threshold
+            self.keep_recent = context_config.keep_recent
+            self.low_importance_threshold = context_config.low_importance_threshold
+            self.prune_minimum_tokens = context_config.prune_minimum_tokens
+            self.prune_protect_window = context_config.prune_protect_window
+            self.prune_preview_chars = context_config.prune_preview_chars
+            self.max_assistant_output_length = context_config.max_assistant_output_length
+            self.high_importance_threshold = context_config.high_importance_threshold
+            self.min_summary_tokens = context_config.min_summary_tokens
+            self.min_summary_interval = context_config.min_summary_interval
+        else:
+            self.max_tool_output_length = max_tool_output_length
+            self.summary_threshold = summary_threshold
+            self.keep_recent = keep_recent
+            self.low_importance_threshold = low_importance_threshold
+            self.prune_minimum_tokens = prune_minimum_tokens
+            self.prune_protect_window = prune_protect_window
+            self.prune_preview_chars = prune_preview_chars
+            self.max_assistant_output_length = max_assistant_output_length
+            self.high_importance_threshold = high_importance_threshold
+            self.min_summary_tokens = min_summary_tokens
+            self.min_summary_interval = min_summary_interval
+
         self.token_estimator = token_estimator or _default_token_estimator
-        self.low_importance_threshold = low_importance_threshold
+        self.llm_caller = llm_caller
+
+        # LLM summary state tracking
+        self._last_summary_msg_count: int = 0
+        self._summary_executed_this_rebuild: bool = False
 
     # ------------------------------------------------------------------
     # Public API
@@ -160,6 +205,229 @@ class ContextCompressor:
         )
 
         return result, summary
+
+    # ------------------------------------------------------------------
+    # Prune: pre-trim large tool outputs (Task 4)
+    # ------------------------------------------------------------------
+
+    def _prune_large_outputs(
+        self,
+        messages: List[Message],
+        keep_recent: int,
+        archive: Optional["CompressionArchive"] = None,
+    ) -> List[Message]:
+        """Replace oversized tool outputs outside the protect window with head+tail previews."""
+        n = len(messages)
+        result: List[Message] = []
+
+        for i, msg in enumerate(messages):
+            # Protect recent messages
+            if n - i <= self.prune_protect_window:
+                result.append(msg)
+                continue
+
+            # Skip already-summarized messages
+            if getattr(msg, "compression_state", "original") == "summarized":
+                result.append(msg)
+                continue
+
+            # Only prune tool messages
+            if msg.role != Role.TOOL.value:
+                result.append(msg)
+                continue
+
+            content = msg.content or ""
+            est_tokens = math.ceil(len(content) / _DEFAULT_CHARS_PER_TOKEN)
+            if est_tokens <= self.prune_minimum_tokens:
+                result.append(msg)
+                continue
+
+            # Archive original before pruning
+            archive_id = ""
+            if archive is not None:
+                archive_id = archive.archive([msg], "prune", (i, i))
+
+            pc = self.prune_preview_chars
+            head = content[:pc]
+            tail = content[-pc:] if len(content) > pc else ""
+            marker = f"[... pruned {est_tokens} tokens for context efficiency ... | archive_id={archive_id}]"
+            pruned_content = f"{head}\n{marker}\n{tail}"
+
+            pruned_msg = Message(
+                role=msg.role,
+                content=pruned_content,
+                tool_calls=msg.tool_calls,
+                tool_call_id=msg.tool_call_id,
+                name=msg.name,
+                token_count=msg.token_count,
+                importance=msg.importance,
+                compression_state="pruned",
+            )
+            result.append(pruned_msg)
+            logger.debug(
+                "[Prune] Pruned message %d: %d tokens -> preview", i, est_tokens
+            )
+
+        return result
+
+    # ------------------------------------------------------------------
+    # LLM Summary (Task 6)
+    # ------------------------------------------------------------------
+
+    def reset_rebuild_state(self):
+        """Reset per-rebuild flags.  Call at the start of each rebuild()."""
+        self._summary_executed_this_rebuild = False
+
+    def _build_summary_prompt(self, messages: List[Message]) -> str:
+        """Build the prompt that instructs the LLM to produce a structured summary."""
+        conversation = []
+        for msg in messages:
+            role = msg.role
+            content = (msg.content or "")[:2000]  # cap per-message length
+            conversation.append(f"[{role}]: {content}")
+
+        conversation_text = "\n\n".join(conversation)
+
+        return (
+            "You are a conversation compressor. Summarize the following conversation "
+            "history into a structured state snapshot. Preserve:\n"
+            "1. Key decisions made\n"
+            "2. Actions completed (files created/modified/deleted)\n"
+            "3. Current task state and progress\n"
+            "4. Important context and constraints\n"
+            "5. User preferences expressed\n\n"
+            "Output format:\n"
+            "<state_snapshot>\n"
+            "## Decisions\n- [decision 1]\n\n"
+            "## Completed Actions\n- [action 1]\n\n"
+            "## Current State\n[description]\n\n"
+            "## File Changes\n- [file change 1]\n\n"
+            "## User Preferences\n- [preference 1]\n"
+            "</state_snapshot>\n\n"
+            "--- CONVERSATION TO SUMMARIZE ---\n\n"
+            f"{conversation_text}"
+        )
+
+    def _should_llm_summarize(
+        self,
+        messages: List[Message],
+        utilization: float,
+        warning_threshold: float,
+    ) -> bool:
+        """Check all four conditions for LLM summary trigger."""
+        if utilization < warning_threshold:
+            logger.debug("[LLM Summary] Skip: utilization %.2f < threshold %.2f", utilization, warning_threshold)
+            return False
+
+        msg_since_last = len(messages) - self._last_summary_msg_count
+        if msg_since_last < self.min_summary_interval:
+            logger.debug("[LLM Summary] Skip: only %d msgs since last summary (need %d)", msg_since_last, self.min_summary_interval)
+            return False
+
+        # Count summarisable tokens
+        summarisable_tokens = 0
+        for msg in messages:
+            state = getattr(msg, "compression_state", "original")
+            if state in ("original", "truncated", "pruned"):
+                summarisable_tokens += self.token_estimator([msg])
+        if summarisable_tokens < self.min_summary_tokens:
+            logger.debug("[LLM Summary] Skip: summarisable tokens %d < min %d", summarisable_tokens, self.min_summary_tokens)
+            return False
+
+        if self._summary_executed_this_rebuild:
+            logger.debug("[LLM Summary] Skip: already executed this rebuild")
+            return False
+
+        return True
+
+    def _llm_summarize(
+        self,
+        messages: List[Message],
+        keep_recent: int,
+        archive: Optional["CompressionArchive"] = None,
+        utilization: float = 0.0,
+        warning_threshold: float = 0.8,
+    ) -> List[Message]:
+        """Attempt LLM-based semantic summary of old messages."""
+        if not self._should_llm_summarize(messages, utilization, warning_threshold):
+            return messages
+
+        if self.llm_caller is None:
+            logger.debug("[LLM Summary] No llm_caller configured — falling back to placeholder")
+            return messages
+
+        # Separate system / old / recent
+        system_msgs = [m for m in messages if m.role == Role.SYSTEM.value]
+        non_system = [m for m in messages if m.role != Role.SYSTEM.value]
+
+        if len(non_system) <= keep_recent:
+            return messages
+
+        recent_msgs = non_system[-keep_recent:]
+        old_msgs = non_system[:-keep_recent]
+
+        # Partition old messages by compression state
+        summarisable = []
+        preserved = []  # already SUMMARIZED — keep as-is
+        for msg in old_msgs:
+            state = getattr(msg, "compression_state", "original")
+            if state == "summarized":
+                preserved.append(msg)
+            else:
+                summarisable.append(msg)
+
+        if not summarisable:
+            return messages
+
+        tokens_before = self.token_estimator(summarisable)
+        prompt = self._build_summary_prompt(summarisable)
+
+        try:
+            summary_text = self.llm_caller(prompt)
+        except Exception as exc:
+            logger.warning("[LLM Summary] LLM call failed (%s) — falling back to placeholder", exc)
+            # Fallback: use existing _summarize_old_assistants
+            fallback_remaining, _ = self._summarize_old_assistants(old_msgs)
+            return system_msgs + fallback_remaining + recent_msgs
+
+        # Archive originals
+        archive_id = ""
+        if archive is not None:
+            start_idx = len(system_msgs)
+            end_idx = start_idx + len(summarisable) - 1
+            archive_id = archive.archive(summarisable, "llm_summary", (start_idx, end_idx))
+
+        # Build summary message with metadata
+        tokens_after_est = math.ceil(len(summary_text) / _DEFAULT_CHARS_PER_TOKEN) + _DEFAULT_MSG_OVERHEAD
+        metadata = (
+            f"<compression_metadata>\n"
+            f"  compressed_messages: {len(summarisable)}\n"
+            f"  tokens_before: {tokens_before}\n"
+            f"  tokens_after: {tokens_after_est}\n"
+            f"  archive_id: {archive_id}\n"
+            f"</compression_metadata>\n\n"
+        )
+        recall_hint = (
+            f"\n\nNote: The above is a compressed summary of earlier conversation. "
+            f"If you need the full original messages, use the 'recall_compressed_messages' "
+            f"tool with archive_id='{archive_id}'."
+        )
+        summary_msg = Message(
+            role=Role.SYSTEM.value,
+            content=metadata + summary_text + recall_hint,
+            compression_state="summarized",
+        )
+
+        self._summary_executed_this_rebuild = True
+        self._last_summary_msg_count = len(messages)
+
+        logger.info(
+            "[LLM Summary] Compressed %d messages: %d -> %d tokens (ratio=%.1f%%)",
+            len(summarisable), tokens_before, tokens_after_est,
+            (tokens_after_est / max(tokens_before, 1)) * 100,
+        )
+
+        return system_msgs + preserved + [summary_msg] + recent_msgs
 
     def truncate_for_emergency(
         self,

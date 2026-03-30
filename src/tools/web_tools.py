@@ -15,6 +15,7 @@ from typing import Dict, Any, Optional, List
 from urllib.parse import urlparse
 
 from ..core.tool import Tool
+from ..util.http_client import http_get, http_download, _is_ssl_error, _curl_get
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +98,22 @@ def fetch_url(
             "truncated": is_text and len(resp.text) > max_chars
         }
     except Exception as e:
+        if _is_ssl_error(e):
+            logger.warning(f"[FetchURL] SSL error, falling back to curl: {e}")
+            result = _curl_get(url, headers=req_headers, timeout=timeout, max_chars=max_chars)
+            if result.get("success") or result.get("status_code", 0) > 0:
+                return {
+                    "url": url,
+                    "status_code": result.get("status_code", 0),
+                    "ok": result.get("success", False),
+                    "content_type": result.get("headers", {}).get("Content-Type", ""),
+                    "content_length": len(result.get("body", "")),
+                    "response_headers": result.get("headers", {}),
+                    "body": result.get("body", ""),
+                    "truncated": False,
+                    "method": "curl_fallback"
+                }
+            return {"error": result.get("error", str(e)), "url": url}
         logger.exception("[FetchURL] Failed")
         return {"error": str(e), "url": url}
 
@@ -257,6 +274,20 @@ def download_file(url: str, output_path: str, timeout: int = 60) -> Dict[str, An
             "success": True
         }
     except Exception as e:
+        if _is_ssl_error(e):
+            logger.warning(f"[DownloadFile] SSL error, falling back to curl: {e}")
+            out = Path(output_path).expanduser().resolve()
+            out.parent.mkdir(parents=True, exist_ok=True)
+            result = http_download(url, str(out), headers=dict(_DEFAULT_HEADERS), timeout=timeout)
+            if result.get("success"):
+                return {
+                    "url": url,
+                    "output_path": result.get("file_path", str(out)),
+                    "file_size_bytes": result.get("size_bytes", 0),
+                    "success": True,
+                    "method": "curl_fallback"
+                }
+            return {"error": result.get("error", str(e)), "url": url}
         logger.exception("[DownloadFile] Failed")
         return {"error": str(e), "url": url}
 
@@ -290,6 +321,21 @@ def check_url(url: str, timeout: int = 10) -> Dict[str, Any]:
             "redirect_count": len(resp.history)
         }
     except Exception as e:
+        if _is_ssl_error(e):
+            logger.warning(f"[CheckURL] SSL error, falling back to curl: {e}")
+            result = _curl_get(url, headers=dict(_DEFAULT_HEADERS), timeout=timeout, max_chars=1)
+            if result.get("status_code", 0) > 0:
+                return {
+                    "url": url,
+                    "final_url": url,
+                    "reachable": True,
+                    "status_code": result["status_code"],
+                    "content_type": result.get("headers", {}).get("Content-Type", ""),
+                    "content_length": result.get("headers", {}).get("Content-Length"),
+                    "server": result.get("headers", {}).get("Server", ""),
+                    "redirect_count": 0,
+                    "method": "curl_fallback"
+                }
         return {
             "url": url,
             "reachable": False,

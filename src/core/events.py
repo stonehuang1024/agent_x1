@@ -50,6 +50,7 @@ class AgentEvent(Enum):
     # Context events
     CONTEXT_ASSEMBLED = auto()
     CONTEXT_COMPRESSED = auto()
+    COMPRESSION_PIPELINE_COMPLETED = auto()
     
     # Memory events
     MEMORY_STORED = auto()

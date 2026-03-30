@@ -175,8 +175,35 @@ class AgentLoop:
                 
                 llm_response = await self._call_llm(messages, iteration, step_start_time)
                 
-                # 3. Handle tool calls or return result
+                # 3. Handle API errors, tool calls, or return result
+                if llm_response.get("finish_reason") == "error":
+                    # API error (e.g. 504 timeout, 400 bad request) —
+                    # do NOT treat as final response.  Retry up to 2 times
+                    # with the same context, then give up gracefully.
+                    error_content = llm_response.get("content", "Unknown API error")
+                    self._consecutive_errors += 1
+                    if self._consecutive_errors < 3:
+                        logger.warning(
+                            "[AgentLoop] LLM API error (attempt %d/3): %s — retrying",
+                            self._consecutive_errors, error_content,
+                        )
+                        # Small backoff before retry
+                        import asyncio
+                        await asyncio.sleep(min(2 ** self._consecutive_errors, 10))
+                        continue
+                    else:
+                        logger.error(
+                            "[AgentLoop] LLM API error persists after 3 attempts: %s",
+                            error_content,
+                        )
+                        final_response = (
+                            f"I encountered a persistent API error and could not complete "
+                            f"the request. Error: {error_content}"
+                        )
+                        break
+
                 if llm_response.get("tool_calls"):
+                    self._consecutive_errors = 0
                     self._transition(AgentState.EXECUTING_TOOLS)
                     
                     # DEBUG: Log each tool call
@@ -304,7 +331,8 @@ class AgentLoop:
                     continue
                 
                 else:
-                    # Final response
+                    # Final response — reset error counter
+                    self._consecutive_errors = 0
                     final_response = llm_response.get("content", "")
                     break
             
