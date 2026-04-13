@@ -1,0 +1,62 @@
+{
+  "model": "rankmixer",
+  "num_parameters": 199489,
+  "best_epoch": 2,
+  "best_val_auc": 0.5721447227471325,
+  "total_training_time": 4.582319021224976,
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 0.07060721331523566,
+      "train_auc": 0.5404798744253839,
+      "train_logloss": 0.07132985414833862,
+      "val_loss": 4.212027585506439,
+      "val_auc": 0.5431436033845672,
+      "val_logloss": 4.208470220997256,
+      "epoch_time": 1.4102389812469482
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.04154620428062693,
+      "train_auc": 0.9165601524834623,
+      "train_logloss": 0.03783740107848436,
+      "val_loss": 4.292261981964112,
+      "val_auc": 0.5721447227471325,
+      "val_logloss": 4.287127759954502,
+      "epoch_time": 1.3708438873291016
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.01162630416337943,
+      "train_auc": 0.9960982172889338,
+      "train_logloss": 0.011535806770263788,
+      "val_loss": 6.4466472387313845,
+      "val_auc": 0.5549771513626935,
+      "val_logloss": 6.443936010720669,
+      "epoch_time": 1.7888000011444092
+    }
+  ],
+  "args": {
+    "dataset": "synthetic",
+    "data_path": "./data",
+    "n_samples": 5000,
+    "n_features": 20,
+    "model": "rankmixer",
+    "hidden_dim": 32,
+    "num_layers": 2,
+    "num_tokens": 8,
+    "num_heads": 8,
+    "ffn_ratio": 4,
+    "dropout": 0.1,
+    "use_moe": false,
+    "num_experts": 4,
+    "moe_top_k": 2,
+    "epochs": 3,
+    "batch_size": 64,
+    "lr": 0.001,
+    "weight_decay": 1e-05,
+    "optimizer": "adam",
+    "seed": 42,
+    "output_dir": "./output/quick_test/rankmixer_synthetic"
+  }
+}
